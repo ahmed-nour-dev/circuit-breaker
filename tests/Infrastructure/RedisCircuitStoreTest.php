@@ -130,4 +130,40 @@ final class RedisCircuitStoreTest extends TestCase
         $this->assertSame(CircuitState::Closed, $circuit->state);
         $this->assertSame(0, $circuit->failures);
     }
+
+    public function test_get_wraps_redis_exception_in_circuit_infrastructure_exception(): void
+    {
+        $failingClient = new class {
+            public function get(string $key): never
+            {
+                throw new \RedisException('Connection to Redis failed');
+            }
+        };
+
+        $store = new RedisCircuitStore($failingClient, 'test_circuit:');
+
+        $this->expectException(\App\Modules\CircuitBreaker\Domain\Exceptions\CircuitInfrastructureException::class);
+        $this->expectExceptionMessage("Circuit 'failing-provider' infrastructure failure.");
+
+        $store->get('failing-provider');
+    }
+
+    public function test_save_wraps_redis_exception_in_circuit_infrastructure_exception(): void
+    {
+        $failingClient = new class {
+            public function set(string $key, string $value): never
+            {
+                throw new \RedisException('Write error: Redis cluster node is unavailable');
+            }
+        };
+
+        $store = new RedisCircuitStore($failingClient, 'test_circuit:');
+        $circuit = new Circuit('failing-provider');
+
+        $this->expectException(\App\Modules\CircuitBreaker\Domain\Exceptions\CircuitInfrastructureException::class);
+        $this->expectExceptionMessage("Circuit 'failing-provider' infrastructure failure.");
+
+        $store->save($circuit);
+    }
 }
+

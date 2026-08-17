@@ -103,4 +103,22 @@ final class RedisCircuitLockTest extends TestCase
         $this->assertNotNull($handle2);
         $handle2->release();
     }
+
+    public function test_acquire_wraps_redis_exception_in_circuit_infrastructure_exception(): void
+    {
+        $failingClient = new class {
+            public function set(string $key, string $token, array $options): never
+            {
+                throw new \RedisException('Connection reset by peer');
+            }
+        };
+
+        $lock = new RedisCircuitLock($failingClient, 'test_lock:', ':probe-lock');
+
+        $this->expectException(\App\Modules\CircuitBreaker\Domain\Exceptions\CircuitInfrastructureException::class);
+        $this->expectExceptionMessage("Circuit 'failing-circuit' infrastructure failure.");
+
+        $lock->acquire('failing-circuit', 5);
+    }
 }
+

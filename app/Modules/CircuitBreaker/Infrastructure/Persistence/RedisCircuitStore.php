@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\CircuitBreaker\Infrastructure\Persistence;
 
+use App\Modules\CircuitBreaker\Domain\Exceptions\CircuitInfrastructureException;
 use App\Modules\CircuitBreaker\Domain\Circuit;
 use App\Modules\CircuitBreaker\Domain\CircuitState;
 use App\Modules\CircuitBreaker\Domain\Contracts\CircuitStore;
@@ -27,7 +28,15 @@ final class RedisCircuitStore implements CircuitStore
     public function get(string $name): Circuit
     {
         $key = $this->formatKey($name);
-        $raw = $this->resolveClient()->get($key);
+
+        try {
+            $raw = $this->resolveClient()->get($key);
+        } catch (Throwable $e) {
+            throw new CircuitInfrastructureException(
+                circuit: $name,
+                previous: $e,
+            );
+        }
 
         if ($raw === false || $raw === null || ! is_string($raw)) {
             return new Circuit(
@@ -81,7 +90,14 @@ final class RedisCircuitStore implements CircuitStore
 
         $encoded = json_encode($payload, JSON_THROW_ON_ERROR);
 
-        $this->resolveClient()->set($key, $encoded);
+        try {
+            $this->resolveClient()->set($key, $encoded);
+        } catch (Throwable $e) {
+            throw new CircuitInfrastructureException(
+                circuit: $circuit->name,
+                previous: $e,
+            );
+        }
     }
 
     private function formatKey(string $name): string

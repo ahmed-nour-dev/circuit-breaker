@@ -87,12 +87,59 @@ final class ServiceProviderTest extends TestCase
         $this->assertInstanceOf(HalfOpenStateHandler::class, $this->app->make(HalfOpenStateHandler::class));
         $this->assertInstanceOf(OpenStateHandler::class, $this->app->make(OpenStateHandler::class));
         $this->assertInstanceOf(CircuitStateMachine::class, $this->app->make(CircuitStateMachine::class));
+        $this->assertInstanceOf(\App\Modules\CircuitBreaker\Domain\Contracts\InfrastructureFailureHandler::class, $this->app->make(\App\Modules\CircuitBreaker\Domain\Contracts\InfrastructureFailureHandler::class));
+        $this->assertInstanceOf(\App\Modules\CircuitBreaker\Infrastructure\Failure\FailOpenHandler::class, $this->app->make(\App\Modules\CircuitBreaker\Domain\Contracts\InfrastructureFailureHandler::class));
         $this->assertInstanceOf(CircuitBreaker::class, $this->app->make(CircuitBreaker::class));
 
         // Test executing through resolved CircuitBreaker
         $circuitBreaker = $this->app->make(CircuitBreaker::class);
         $result = $circuitBreaker->execute('test-resolved', fn () => 'hello-from-container');
         $this->assertSame('hello-from-container', $result);
+    }
+
+    public function test_service_provider_resolves_fail_closed_handler_when_configured(): void
+    {
+        $config = new ConfigRepository([
+            'circuit-breaker' => [
+                'infrastructure_failure' => [
+                    'strategy' => 'fail_closed',
+                ],
+            ],
+        ]);
+        $this->app->instance('config', $config);
+
+        $provider = new CircuitBreakerServiceProvider($this->app);
+        $provider->register();
+
+        $handler = $this->app->make(\App\Modules\CircuitBreaker\Domain\Contracts\InfrastructureFailureHandler::class);
+        $this->assertInstanceOf(\App\Modules\CircuitBreaker\Infrastructure\Failure\FailClosedHandler::class, $handler);
+    }
+
+    public function test_service_provider_resolves_fallback_handler_when_configured(): void
+    {
+        $dummyFallback = new class implements \App\Modules\CircuitBreaker\Domain\Contracts\InfrastructureFallback {
+            public function execute(\App\Modules\CircuitBreaker\Domain\CircuitExecution $execution, \Throwable $exception): mixed
+            {
+                return 'fallback';
+            }
+        };
+
+        $this->app->instance(\App\Modules\CircuitBreaker\Domain\Contracts\InfrastructureFallback::class, $dummyFallback);
+
+        $config = new ConfigRepository([
+            'circuit-breaker' => [
+                'infrastructure_failure' => [
+                    'strategy' => 'fallback',
+                ],
+            ],
+        ]);
+        $this->app->instance('config', $config);
+
+        $provider = new CircuitBreakerServiceProvider($this->app);
+        $provider->register();
+
+        $handler = $this->app->make(\App\Modules\CircuitBreaker\Domain\Contracts\InfrastructureFailureHandler::class);
+        $this->assertInstanceOf(\App\Modules\CircuitBreaker\Infrastructure\Failure\FallbackHandler::class, $handler);
     }
 
     public function test_redis_connection_factory_is_reusable_across_resolves(): void
@@ -107,3 +154,4 @@ final class ServiceProviderTest extends TestCase
         $this->assertSame($factory1, $factory2);
     }
 }
+

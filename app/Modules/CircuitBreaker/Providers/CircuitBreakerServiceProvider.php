@@ -6,15 +6,21 @@ namespace App\Modules\CircuitBreaker\Providers;
 
 use App\Modules\CircuitBreaker\Application\CircuitBreaker;
 use App\Modules\CircuitBreaker\Application\CircuitPolicyResolver;
+use App\Modules\CircuitBreaker\Config\InfrastructureFailurePolicy;
 use App\Modules\CircuitBreaker\Domain\CircuitPolicy;
 use App\Modules\CircuitBreaker\Domain\Contracts\CircuitLock;
 use App\Modules\CircuitBreaker\Domain\Contracts\CircuitStore;
 use App\Modules\CircuitBreaker\Domain\Contracts\Clock;
 use App\Modules\CircuitBreaker\Domain\Contracts\FailureClassifier;
+use App\Modules\CircuitBreaker\Domain\Contracts\InfrastructureFailureHandler;
+use App\Modules\CircuitBreaker\Domain\Contracts\InfrastructureFallback;
 use App\Modules\CircuitBreaker\Domain\StateMachine\CircuitStateMachine;
 use App\Modules\CircuitBreaker\Domain\StateMachine\ClosedStateHandler;
 use App\Modules\CircuitBreaker\Domain\StateMachine\HalfOpenStateHandler;
 use App\Modules\CircuitBreaker\Domain\StateMachine\OpenStateHandler;
+use App\Modules\CircuitBreaker\Infrastructure\Failure\FailClosedHandler;
+use App\Modules\CircuitBreaker\Infrastructure\Failure\FailOpenHandler;
+use App\Modules\CircuitBreaker\Infrastructure\Failure\FallbackHandler;
 use App\Modules\CircuitBreaker\Infrastructure\Failure\HttpFailureClassifier;
 use App\Modules\CircuitBreaker\Infrastructure\Lock\RedisCircuitLock;
 use App\Modules\CircuitBreaker\Infrastructure\Persistence\RedisCircuitStore;
@@ -123,6 +129,21 @@ final class CircuitBreakerServiceProvider extends ServiceProvider
             );
         });
 
+        $this->app->{$bindMethod}(InfrastructureFailureHandler::class, function (Container $app): InfrastructureFailureHandler {
+            $config = $app->bound('config') ? $app->make('config') : null;
+            $strategy = (string) ($config?->get('circuit-breaker.infrastructure_failure.strategy') ?? 'fail_open');
+
+            return match ($strategy) {
+                'fail_closed', InfrastructureFailurePolicy::FailClosed->value => new FailClosedHandler(),
+                'fallback', InfrastructureFailurePolicy::Fallback->value => new FallbackHandler(
+                    $app->make(
+                        (string) ($config?->get('circuit-breaker.infrastructure_failure.fallback') ?? InfrastructureFallback::class)
+                    )
+                ),
+                default => new FailOpenHandler(),
+            };
+        });
+
         $this->app->{$bindMethod}(CircuitStateMachine::class, function (Container $app): CircuitStateMachine {
             return new CircuitStateMachine([
                 $app->make(ClosedStateHandler::class),
@@ -136,6 +157,7 @@ final class CircuitBreakerServiceProvider extends ServiceProvider
                 store: $app->make(CircuitStore::class),
                 stateMachine: $app->make(CircuitStateMachine::class),
                 policyResolver: $app->make(CircuitPolicyResolver::class),
+                failureHandler: $app->make(InfrastructureFailureHandler::class),
             );
         });
     }

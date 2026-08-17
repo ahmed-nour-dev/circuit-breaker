@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\CircuitBreaker\Infrastructure\Lock;
 
+use App\Modules\CircuitBreaker\Domain\Exceptions\CircuitInfrastructureException;
 use App\Modules\CircuitBreaker\Domain\Contracts\CircuitLock;
 use App\Modules\CircuitBreaker\Domain\Contracts\LockHandle;
 use App\Modules\CircuitBreaker\Infrastructure\Redis\RedisConnectionFactory;
@@ -27,9 +28,9 @@ final class RedisCircuitLock implements CircuitLock
     {
         $key = $this->formatLockKey($circuit);
         $token = bin2hex(random_bytes(16));
-        $client = $this->resolveClient();
 
         try {
+            $client = $this->resolveClient();
             $acquired = false;
 
             if ($client instanceof \Redis) {
@@ -50,8 +51,11 @@ final class RedisCircuitLock implements CircuitLock
             if ($acquired) {
                 return new RedisLockHandle($client, $key, $token);
             }
-        } catch (Throwable) {
-            return null;
+        } catch (Throwable $e) {
+            throw new CircuitInfrastructureException(
+                circuit: $circuit,
+                previous: $e,
+            );
         }
 
         return null;

@@ -52,4 +52,24 @@ return [
         'lock_suffix' => ':probe-lock',
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Infrastructure Failure Handling
+    |--------------------------------------------------------------------------
+    |
+    | Defines the behavior when circuit breaker infrastructure (e.g. Redis,
+    | state store, or lock provider) is unavailable.
+    |
+    | Supported strategies:
+    | - 'fail_open'   : Execute protected operation without circuit protection (default)
+    | - 'fail_closed' : Reject operation with CircuitInfrastructureException
+    | - 'fallback'    : Delegate to a configured InfrastructureFallback implementation
+    |
+    */
+    'infrastructure_failure' => [
+        'strategy' => (string) (getenv('CIRCUIT_BREAKER_INFRASTRUCTURE_FAILURE_STRATEGY') ?: 'fail_open'),
+        'fallback' => null,
+    ],
+
 ];
+
