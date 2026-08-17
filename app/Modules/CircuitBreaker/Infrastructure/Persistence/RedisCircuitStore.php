@@ -7,6 +7,7 @@ namespace App\Modules\CircuitBreaker\Infrastructure\Persistence;
 use App\Modules\CircuitBreaker\Domain\Circuit;
 use App\Modules\CircuitBreaker\Domain\CircuitState;
 use App\Modules\CircuitBreaker\Domain\Contracts\CircuitStore;
+use App\Modules\CircuitBreaker\Infrastructure\Redis\RedisConnectionFactory;
 use DateTimeImmutable;
 use DateTimeInterface;
 use Throwable;
@@ -14,7 +15,7 @@ use Throwable;
 final class RedisCircuitStore implements CircuitStore
 {
     /**
-     * @param mixed $redis Redis client instance (e.g. \Redis, \Predis\ClientInterface, \Illuminate\Redis\Connections\Connection)
+     * @param RedisConnectionFactory|mixed $redis Redis connection factory or raw client instance
      * @param string $keyPrefix Prefix for Redis keys
      */
     public function __construct(
@@ -26,7 +27,7 @@ final class RedisCircuitStore implements CircuitStore
     public function get(string $name): Circuit
     {
         $key = $this->formatKey($name);
-        $raw = $this->redis->get($key);
+        $raw = $this->resolveClient()->get($key);
 
         if ($raw === false || $raw === null || ! is_string($raw)) {
             return new Circuit(
@@ -80,11 +81,24 @@ final class RedisCircuitStore implements CircuitStore
 
         $encoded = json_encode($payload, JSON_THROW_ON_ERROR);
 
-        $this->redis->set($key, $encoded);
+        $this->resolveClient()->set($key, $encoded);
     }
 
     private function formatKey(string $name): string
     {
         return $this->keyPrefix . $name;
+    }
+
+    /**
+     * Resolve the underlying Redis client.
+     * Supports RedisConnectionFactory (reconnecting) or a raw client instance.
+     */
+    private function resolveClient(): mixed
+    {
+        if ($this->redis instanceof RedisConnectionFactory) {
+            return $this->redis->connection();
+        }
+
+        return $this->redis;
     }
 }

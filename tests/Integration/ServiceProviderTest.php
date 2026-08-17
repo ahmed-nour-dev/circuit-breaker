@@ -14,6 +14,7 @@ use App\Modules\CircuitBreaker\Domain\StateMachine\CircuitStateMachine;
 use App\Modules\CircuitBreaker\Domain\StateMachine\ClosedStateHandler;
 use App\Modules\CircuitBreaker\Domain\StateMachine\HalfOpenStateHandler;
 use App\Modules\CircuitBreaker\Domain\StateMachine\OpenStateHandler;
+use App\Modules\CircuitBreaker\Infrastructure\Redis\RedisConnectionFactory;
 use App\Modules\CircuitBreaker\Providers\CircuitBreakerServiceProvider;
 use Illuminate\Config\Repository as ConfigRepository;
 use Illuminate\Container\Container;
@@ -58,6 +59,19 @@ final class ServiceProviderTest extends TestCase
         $this->app->instance('config', $config);
     }
 
+    protected function tearDown(): void
+    {
+        // Clean up factory connections
+        if ($this->app->bound(RedisConnectionFactory::class)) {
+            try {
+                $this->app->make(RedisConnectionFactory::class)->disconnect();
+            } catch (\Throwable) {
+            }
+        }
+
+        parent::tearDown();
+    }
+
     public function test_service_provider_registers_and_resolves_all_bindings(): void
     {
         $provider = new CircuitBreakerServiceProvider($this->app);
@@ -65,6 +79,7 @@ final class ServiceProviderTest extends TestCase
 
         $this->assertInstanceOf(Clock::class, $this->app->make(Clock::class));
         $this->assertInstanceOf(FailureClassifier::class, $this->app->make(FailureClassifier::class));
+        $this->assertInstanceOf(RedisConnectionFactory::class, $this->app->make(RedisConnectionFactory::class));
         $this->assertInstanceOf(CircuitStore::class, $this->app->make(CircuitStore::class));
         $this->assertInstanceOf(CircuitLock::class, $this->app->make(CircuitLock::class));
         $this->assertInstanceOf(CircuitPolicyResolver::class, $this->app->make(CircuitPolicyResolver::class));
@@ -78,5 +93,17 @@ final class ServiceProviderTest extends TestCase
         $circuitBreaker = $this->app->make(CircuitBreaker::class);
         $result = $circuitBreaker->execute('test-resolved', fn () => 'hello-from-container');
         $this->assertSame('hello-from-container', $result);
+    }
+
+    public function test_redis_connection_factory_is_reusable_across_resolves(): void
+    {
+        $provider = new CircuitBreakerServiceProvider($this->app);
+        $provider->register();
+
+        $factory1 = $this->app->make(RedisConnectionFactory::class);
+        $factory2 = $this->app->make(RedisConnectionFactory::class);
+
+        // Factory is a singleton — same instance
+        $this->assertSame($factory1, $factory2);
     }
 }

@@ -18,6 +18,7 @@ use App\Modules\CircuitBreaker\Domain\StateMachine\OpenStateHandler;
 use App\Modules\CircuitBreaker\Infrastructure\Failure\HttpFailureClassifier;
 use App\Modules\CircuitBreaker\Infrastructure\Lock\RedisCircuitLock;
 use App\Modules\CircuitBreaker\Infrastructure\Persistence\RedisCircuitStore;
+use App\Modules\CircuitBreaker\Infrastructure\Redis\RedisConnectionFactory;
 use App\Modules\CircuitBreaker\Infrastructure\Time\SystemClock;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Support\ServiceProvider;
@@ -31,28 +32,59 @@ final class CircuitBreakerServiceProvider extends ServiceProvider
             'circuit-breaker'
         );
 
+        // Stateless services — safe as singletons even under Octane.
         $this->app->singleton(Clock::class, SystemClock::class);
-
         $this->app->singleton(FailureClassifier::class, HttpFailureClassifier::class);
 
-        $this->app->singleton(CircuitStore::class, function (Container $app): CircuitStore {
-            $redisConnection = $this->resolveRedisClient($app);
+        // RedisConnectionFactory — singleton per worker, with built-in reconnection.
+        // Under Octane, dead connections are detected via PING and transparently
+        // reconnected. The disconnect() method is called on Octane flush events.
+        $this->app->singleton(RedisConnectionFactory::class, function (Container $app): RedisConnectionFactory {
+            $config = $app->bound('config') ? $app->make('config') : null;
+
+            if ($app->bound('redis')) {
+                // When Laravel's Redis manager is available, we don't use
+                // RedisConnectionFactory — we go through Laravel's connection
+                // which is already Octane-aware when configured properly.
+                // This branch won't actually construct a factory; the store/lock
+                // closures below will detect this and use Laravel's connection.
+            }
+
+            return new RedisConnectionFactory(
+                host: (string) (getenv('REDIS_HOST') ?: '127.0.0.1'),
+                port: (int) (getenv('REDIS_PORT') ?: 6379),
+                timeout: 2.0,
+                password: getenv('REDIS_PASSWORD') ?: null,
+                database: (int) (getenv('REDIS_DB') ?: 0),
+            );
+        });
+
+        // Redis-dependent services use scoped() when available (Laravel 10+).
+        // scoped() flushes the resolved instance after each Octane request,
+        // preventing stale state. In standard php-fpm, scoped() behaves
+        // identically to singleton() — resolved once per request lifecycle.
+        $bindMethod = method_exists($this->app, 'scoped') ? 'scoped' : 'singleton';
+
+        $this->app->{$bindMethod}(CircuitStore::class, function (Container $app): CircuitStore {
             $config = $app->bound('config') ? $app->make('config') : null;
             $prefix = (string) ($config?->get('circuit-breaker.redis.prefix') ?? 'circuit:');
 
-            return new RedisCircuitStore($redisConnection, $prefix);
+            $redis = $this->resolveRedisClient($app);
+
+            return new RedisCircuitStore($redis, $prefix);
         });
 
-        $this->app->singleton(CircuitLock::class, function (Container $app): CircuitLock {
-            $redisConnection = $this->resolveRedisClient($app);
+        $this->app->{$bindMethod}(CircuitLock::class, function (Container $app): CircuitLock {
             $config = $app->bound('config') ? $app->make('config') : null;
             $prefix = (string) ($config?->get('circuit-breaker.redis.prefix') ?? 'circuit:');
             $suffix = (string) ($config?->get('circuit-breaker.redis.lock_suffix') ?? ':probe-lock');
 
-            return new RedisCircuitLock($redisConnection, $prefix, $suffix);
+            $redis = $this->resolveRedisClient($app);
+
+            return new RedisCircuitLock($redis, $prefix, $suffix);
         });
 
-        $this->app->singleton(CircuitPolicyResolver::class, function (Container $app): CircuitPolicyResolver {
+        $this->app->{$bindMethod}(CircuitPolicyResolver::class, function (Container $app): CircuitPolicyResolver {
             $config = $app->bound('config') ? $app->make('config') : null;
             $providers = (array) ($config?->get('circuit-breaker.providers') ?? []);
             $defaultConfig = (array) ($config?->get('circuit-breaker.default') ?? []);
@@ -66,7 +98,7 @@ final class CircuitBreakerServiceProvider extends ServiceProvider
             return new CircuitPolicyResolver($providers, $defaultPolicy);
         });
 
-        $this->app->singleton(ClosedStateHandler::class, function (Container $app): ClosedStateHandler {
+        $this->app->{$bindMethod}(ClosedStateHandler::class, function (Container $app): ClosedStateHandler {
             return new ClosedStateHandler(
                 store: $app->make(CircuitStore::class),
                 failureClassifier: $app->make(FailureClassifier::class),
@@ -74,7 +106,7 @@ final class CircuitBreakerServiceProvider extends ServiceProvider
             );
         });
 
-        $this->app->singleton(HalfOpenStateHandler::class, function (Container $app): HalfOpenStateHandler {
+        $this->app->{$bindMethod}(HalfOpenStateHandler::class, function (Container $app): HalfOpenStateHandler {
             return new HalfOpenStateHandler(
                 lock: $app->make(CircuitLock::class),
                 store: $app->make(CircuitStore::class),
@@ -83,7 +115,7 @@ final class CircuitBreakerServiceProvider extends ServiceProvider
             );
         });
 
-        $this->app->singleton(OpenStateHandler::class, function (Container $app): OpenStateHandler {
+        $this->app->{$bindMethod}(OpenStateHandler::class, function (Container $app): OpenStateHandler {
             return new OpenStateHandler(
                 store: $app->make(CircuitStore::class),
                 clock: $app->make(Clock::class),
@@ -91,7 +123,7 @@ final class CircuitBreakerServiceProvider extends ServiceProvider
             );
         });
 
-        $this->app->singleton(CircuitStateMachine::class, function (Container $app): CircuitStateMachine {
+        $this->app->{$bindMethod}(CircuitStateMachine::class, function (Container $app): CircuitStateMachine {
             return new CircuitStateMachine([
                 $app->make(ClosedStateHandler::class),
                 $app->make(OpenStateHandler::class),
@@ -99,7 +131,7 @@ final class CircuitBreakerServiceProvider extends ServiceProvider
             ]);
         });
 
-        $this->app->singleton(CircuitBreaker::class, function (Container $app): CircuitBreaker {
+        $this->app->{$bindMethod}(CircuitBreaker::class, function (Container $app): CircuitBreaker {
             return new CircuitBreaker(
                 store: $app->make(CircuitStore::class),
                 stateMachine: $app->make(CircuitStateMachine::class),
@@ -115,23 +147,56 @@ final class CircuitBreakerServiceProvider extends ServiceProvider
                 dirname(__DIR__, 4) . '/config/circuit-breaker.php' => function_exists('config_path') ? config_path('circuit-breaker.php') : dirname(__DIR__, 4) . '/config/circuit-breaker.php',
             ], 'circuit-breaker-config');
         }
+
+        // Register Octane lifecycle listeners when running under Octane.
+        // OperationTerminated fires after each request — we disconnect the
+        // Redis factory so the next request gets a fresh/validated connection.
+        $this->registerOctaneListeners();
     }
 
+    /**
+     * Resolve the Redis client to inject into store/lock.
+     *
+     * When Laravel's Redis manager is available, use it (already Octane-aware).
+     * Otherwise, use our RedisConnectionFactory which has built-in reconnection.
+     */
     private function resolveRedisClient(Container $app): mixed
     {
-        $config = $app->bound('config') ? $app->make('config') : null;
-        $connectionName = $config?->get('circuit-breaker.redis.connection', 'default') ?? 'default';
-
         if ($app->bound('redis')) {
+            $config = $app->bound('config') ? $app->make('config') : null;
+            $connectionName = $config?->get('circuit-breaker.redis.connection', 'default') ?? 'default';
+
             return $app->make('redis')->connection($connectionName);
         }
 
-        // Fallback to native PhpRedis
-        $redis = new \Redis();
-        $host = (string) (getenv('REDIS_HOST') ?: '127.0.0.1');
-        $port = (int) (getenv('REDIS_PORT') ?: 6379);
-        $redis->connect($host, $port);
+        // Fallback: use reconnecting factory (safe for Octane)
+        return $app->make(RedisConnectionFactory::class);
+    }
 
-        return $redis;
+    /**
+     * Register Octane lifecycle listeners to clean up Redis connections
+     * between requests, preventing stale/dead socket accumulation.
+     */
+    private function registerOctaneListeners(): void
+    {
+        // Only register if Octane events exist (package is installed)
+        if (! class_exists(\Laravel\Octane\Events\OperationTerminated::class)) {
+            return;
+        }
+
+        $this->app['events']->listen(
+            \Laravel\Octane\Events\OperationTerminated::class,
+            function () {
+                // Disconnect the factory's pooled connection after each request.
+                // On the next request, the factory will reconnect lazily.
+                if ($this->app->bound(RedisConnectionFactory::class)) {
+                    try {
+                        $this->app->make(RedisConnectionFactory::class)->disconnect();
+                    } catch (\Throwable) {
+                        // Never crash the flush lifecycle
+                    }
+                }
+            }
+        );
     }
 }
