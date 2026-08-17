@@ -1,0 +1,320 @@
+# Distributed Circuit Breaker for PHP & Laravel
+
+A production-ready, high-performance distributed Circuit Breaker package for PHP 8.2+ and Laravel. Built with clean architecture principles to protect your applications from cascading failures when third-party APIs (SMS gateways, payment processors, CRMs, email providers, etc.) become degraded or unavailable.
+
+---
+
+## Key Features
+
+- **Distributed State Management**: Shared Redis circuit state across multiple app instances and background workers.
+- **Distributed Probe Locking**: Ensures exactly **one** worker probes the external service in `HALF_OPEN` state, preventing retry stampedes.
+- **Intelligent HTTP Failure Classification**: Differentiates client errors (`4xx` validation/bad requests) from infrastructure/server outages (`5xx`, timeouts, connection resets).
+- **Self-Infrastructure Failure Resilience**: Storage-agnostic handling for its own infrastructure failures (e.g. Redis outages) supporting **Fail-Open**, **Fail-Closed**, and **Fallback** strategies.
+- **Octane & Horizon Ready**: Seamless connection lifecycle management to prevent stale Redis connections across long-running workers.
+- **Strict Separation of Concerns**: Pure domain logic decoupled from Laravel, Redis, and Guzzle.
+- **100% Test Coverage**: Complete unit, integration, and infrastructure test suite with in-memory fakes for fast, isolated testing.
+
+---
+
+## Architecture & State Machine
+
+```mermaid
+stateDiagram-v2
+    [*] --> Closed
+    
+    Closed --> Open: Failure threshold reached\n(e.g., 5 consecutive 5xx/timeouts)
+    Closed --> Closed: Successful call / 4xx error (resets failure count)
+    
+    Open --> Open: Calls fail fast with CircuitOpenException\n(No external HTTP requests made)
+    Open --> HalfOpen: Recovery timeout elapsed\n(e.g., 60s passed)
+    
+    HalfOpen --> Closed: Probe succeeds (acquires lock, recovers circuit)
+    HalfOpen --> Open: Probe fails (trips back to Open)
+    HalfOpen --> HalfOpen: Another worker holds probe lock\n(throws CircuitBusyException)
+```
+
+---
+
+## The Four Distinct Failure Types
+
+A resilient circuit breaker must distinguish between four completely different failure scenarios:
+
+| Failure Type | Example | Behavior |
+| :--- | :--- | :--- |
+| **1. Provider Failure** | Twilio returns `503 Service Unavailable` or cURL timeout | Increment failure count; trip to `OPEN` if threshold is reached. Re-throws provider exception. |
+| **2. Circuit Open** | Provider is down and recovery timeout has not passed | Fails fast immediately by throwing `CircuitOpenException` without touching the provider. |
+| **3. Circuit Busy** | Another worker is currently executing a probe in `HALF_OPEN` | Throws `CircuitBusyException` to avoid concurrent probes against an unhealthy dependency. |
+| **4. Infrastructure Failure** | Redis server down, connection timeout, network partition | Caught by `CircuitBreaker` and delegated to the configured policy (`fail_open`, `fail_closed`, or `fallback`). |
+
+---
+
+## Installation
+
+```bash
+composer require ahmednour1430464/circuit-breaker
+```
+
+### Laravel Service Provider
+
+If package auto-discovery is enabled, `CircuitBreakerServiceProvider` is loaded automatically. Otherwise, add it to your `config/app.php` providers array:
+
+```php
+'providers' => [
+    // ...
+    App\Modules\CircuitBreaker\Providers\CircuitBreakerServiceProvider::class,
+],
+```
+
+Publish the configuration file:
+
+```bash
+php artisan vendor:publish --tag=circuit-breaker-config
+```
+
+---
+
+## Configuration
+
+The published config file is located at `config/circuit-breaker.php`:
+
+```php
+return [
+
+    /*
+    |--------------------------------------------------------------------------
+    | Default Circuit Breaker Policy
+    |--------------------------------------------------------------------------
+    | Default policy applied when a provider does not specify custom rules.
+    */
+    'default' => [
+        'failure_threshold'      => (int) env('CIRCUIT_BREAKER_DEFAULT_THRESHOLD', 5),
+        'recovery_timeout'       => (int) env('CIRCUIT_BREAKER_DEFAULT_RECOVERY_TIMEOUT', 60),
+        'half_open_lock_timeout' => (int) env('CIRCUIT_BREAKER_DEFAULT_LOCK_TIMEOUT', 10),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Provider-Specific Policies
+    |--------------------------------------------------------------------------
+    | Define custom thresholds, recovery timeouts, and probe lock TTLs per service.
+    */
+    'providers' => [
+        'twilio-sms' => [
+            'failure_threshold'      => 5,
+            'recovery_timeout'       => 300,
+            'half_open_lock_timeout' => 10,
+        ],
+
+        'payment-gateway' => [
+            'failure_threshold'      => 3,
+            'recovery_timeout'       => 60,
+            'half_open_lock_timeout' => 10,
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Redis Connection & Key Prefixes
+    |--------------------------------------------------------------------------
+    */
+    'redis' => [
+        'connection'  => env('CIRCUIT_BREAKER_REDIS_CONNECTION', 'default'),
+        'prefix'      => 'circuit:',
+        'lock_suffix' => ':probe-lock',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Infrastructure Failure Handling
+    |--------------------------------------------------------------------------
+    | Strategy when Circuit Breaker storage (e.g. Redis) is unavailable:
+    | - 'fail_open'   : Allow the operation to execute (default).
+    | - 'fail_closed' : Reject the operation with CircuitInfrastructureException.
+    | - 'fallback'    : Delegate to a configured InfrastructureFallback implementation.
+    */
+    'infrastructure_failure' => [
+        'strategy' => env('CIRCUIT_BREAKER_INFRASTRUCTURE_FAILURE_STRATEGY', 'fail_open'),
+        'fallback' => null, // e.g., App\Services\CircuitBreaker\DatabaseFallback::class
+    ],
+
+];
+```
+
+---
+
+## Usage Examples
+
+### 1. Basic Execution (Controllers / Services)
+
+Wrap any external service call in the `execute` method:
+
+```php
+namespace App\Services;
+
+use App\Modules\CircuitBreaker\Application\CircuitBreaker;
+use App\Modules\CircuitBreaker\Domain\Exceptions\CircuitOpenException;
+use App\Modules\CircuitBreaker\Domain\Exceptions\CircuitBusyException;
+
+class SmsService
+{
+    public function __construct(
+        private readonly CircuitBreaker $circuitBreaker,
+        private readonly TwilioClient $twilio,
+    ) {}
+
+    public function sendSms(string $to, string $message): string
+    {
+        try {
+            return $this->circuitBreaker->execute('twilio-sms', function () use ($to, $message) {
+                return $this->twilio->messages->create($to, [
+                    'body' => $message,
+                ]);
+            });
+        } catch (CircuitOpenException $e) {
+            // Service is known to be down — fallback or notify user
+            logger()->warning("Twilio circuit is OPEN. Failing fast.");
+            throw new ServiceUnavailableException("SMS gateway is temporarily unavailable.");
+        } catch (CircuitBusyException $e) {
+            // Another worker is currently testing the connection
+            logger()->info("Twilio circuit is HALF-OPEN probe busy.");
+            throw new ServiceBusyException("SMS gateway is recovering, please retry shortly.");
+        }
+    }
+}
+```
+
+---
+
+### 2. Laravel Queues & Horizon Integration
+
+Handle circuit open or busy states cleanly in queue jobs with automatic delay releases:
+
+```php
+namespace App\Jobs;
+
+use App\Modules\CircuitBreaker\Application\CircuitBreaker;
+use App\Modules\CircuitBreaker\Domain\Exceptions\CircuitBusyException;
+use App\Modules\CircuitBreaker\Domain\Exceptions\CircuitOpenException;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+
+class SendSmsNotificationJob implements ShouldQueue
+{
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public int $tries = 5;
+
+    public function __construct(
+        public readonly string $phone,
+        public readonly string $message,
+    ) {}
+
+    public function handle(CircuitBreaker $circuitBreaker, TwilioClient $twilio): void
+    {
+        try {
+            $circuitBreaker->execute('twilio-sms', function () use ($twilio) {
+                $twilio->send($this->phone, $this->message);
+            });
+        } catch (CircuitOpenException) {
+            // Circuit is OPEN: Delay release by recovery window (e.g., 300s)
+            $this->release(300);
+        } catch (CircuitBusyException) {
+            // Circuit is HALF_OPEN and another worker is probing: retry in 10s
+            $this->release(10);
+        }
+    }
+}
+```
+
+---
+
+## Infrastructure Failure Strategies
+
+If the Circuit Breaker's own storage (e.g. Redis) is down, the package uses the configured `infrastructure_failure.strategy`:
+
+### 1. Fail Open (`fail_open` — Default)
+Executes the protected callback anyway. Ideal when service availability is prioritized over protection to prevent a Redis outage from taking down your entire application.
+
+```
+Redis DOWN ──► FailOpenHandler ──► Execute Protected Operation
+```
+
+### 2. Fail Closed (`fail_closed`)
+Rejects the operation and throws `CircuitInfrastructureException`. Ideal for high-risk operations (e.g. payments, money transfers, hard rate-limited APIs) where executing without safety guarantees is dangerous.
+
+```
+Redis DOWN ──► FailClosedHandler ──► Throws CircuitInfrastructureException
+```
+
+### 3. Fallback (`fallback`)
+Delegates to an implementation of `InfrastructureFallback` (e.g. database-backed store or in-memory fallback).
+
+```php
+use App\Modules\CircuitBreaker\Domain\CircuitExecution;
+use App\Modules\CircuitBreaker\Domain\Contracts\InfrastructureFallback;
+use Throwable;
+
+class DatabaseCircuitFallback implements InfrastructureFallback
+{
+    public function execute(CircuitExecution $execution, Throwable $exception): mixed
+    {
+        // Custom recovery logic, logging, or fallback execution
+        return ($execution->callback)();
+    }
+}
+```
+
+Configure in `config/circuit-breaker.php`:
+```php
+'infrastructure_failure' => [
+    'strategy' => 'fallback',
+    'fallback' => App\Services\DatabaseCircuitFallback::class,
+],
+```
+
+---
+
+## HTTP Failure Classification
+
+The default `HttpFailureClassifier` intelligently distinguishes real provider outages from normal client errors:
+
+- **Does NOT Trip (Client Errors)**:
+  - `400 Bad Request`, `401 Unauthorized`, `403 Forbidden`, `404 Not Found`, `422 Unprocessable Entity`
+  - Application bugs and invalid user inputs do not count toward circuit trips.
+- **Trips Circuit (Server & Network Errors)**:
+  - `500 Internal Server Error`, `502 Bad Gateway`, `503 Service Unavailable`, `504 Gateway Timeout`
+  - Guzzle `ConnectException` and `ServerException`
+  - Laravel HTTP Client `ConnectionException`
+  - Network error messages: `connection timed out`, `cURL error 28`, `connection refused`, `DNS resolution failed`, `reset by peer`
+
+---
+
+## Testing
+
+Run the test suite using PHPUnit:
+
+```bash
+php vendor/bin/phpunit
+```
+
+To run with sail or Docker:
+```bash
+./vendor/bin/sail bin phpunit
+```
+
+### Standalone In-Memory Testing
+
+Domain logic and state machines are fully decoupled and can be tested without Redis using the provided test doubles in `Tests\Support`:
+- `InMemoryCircuitStore`
+- `FakeLock`
+- `FakeClock`
+- `AlwaysTripFailureClassifier` / `NeverTripFailureClassifier`
+
+---
+
+## License
+
+This package is open-sourced software licensed under the [MIT license](LICENSE).

@@ -1,5 +1,5 @@
 {
-    "name": "app/circuit-breaker",
+    "name": "ahmednour1430464/circuit-breaker",
     "description": "Distributed Circuit Breaker module for external services in PHP/Laravel",
     "type": "library",
     "license": "MIT",
@@ -23,6 +23,13 @@
     "autoload-dev": {
         "psr-4": {
             "Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "App\\Modules\\CircuitBreaker\\Providers\\CircuitBreakerServiceProvider"
+            ]
         }
     },
     "scripts": {
