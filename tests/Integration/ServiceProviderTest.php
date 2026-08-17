@@ -1,0 +1,82 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Integration;
+
+use App\Modules\CircuitBreaker\Application\CircuitBreaker;
+use App\Modules\CircuitBreaker\Application\CircuitPolicyResolver;
+use App\Modules\CircuitBreaker\Domain\Contracts\CircuitLock;
+use App\Modules\CircuitBreaker\Domain\Contracts\CircuitStore;
+use App\Modules\CircuitBreaker\Domain\Contracts\Clock;
+use App\Modules\CircuitBreaker\Domain\Contracts\FailureClassifier;
+use App\Modules\CircuitBreaker\Domain\StateMachine\CircuitStateMachine;
+use App\Modules\CircuitBreaker\Domain\StateMachine\ClosedStateHandler;
+use App\Modules\CircuitBreaker\Domain\StateMachine\HalfOpenStateHandler;
+use App\Modules\CircuitBreaker\Domain\StateMachine\OpenStateHandler;
+use App\Modules\CircuitBreaker\Providers\CircuitBreakerServiceProvider;
+use Illuminate\Config\Repository as ConfigRepository;
+use Illuminate\Container\Container;
+use Illuminate\Support\Facades\Facade;
+use PHPUnit\Framework\TestCase;
+
+final class ServiceProviderTest extends TestCase
+{
+    private Container $app;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->app = new Container();
+        Container::setInstance($this->app);
+        Facade::setFacadeApplication($this->app);
+
+        // Bind config repository
+        $config = new ConfigRepository([
+            'circuit-breaker' => [
+                'default' => [
+                    'failure_threshold' => 4,
+                    'recovery_timeout' => 90,
+                    'half_open_lock_timeout' => 15,
+                ],
+                'providers' => [
+                    'custom-provider' => [
+                        'failure_threshold' => 2,
+                        'recovery_timeout' => 45,
+                        'half_open_lock_timeout' => 5,
+                    ],
+                ],
+                'redis' => [
+                    'connection' => 'default',
+                    'prefix' => 'sp_test_circuit:',
+                    'lock_suffix' => ':probe-lock',
+                ],
+            ],
+        ]);
+
+        $this->app->instance('config', $config);
+    }
+
+    public function test_service_provider_registers_and_resolves_all_bindings(): void
+    {
+        $provider = new CircuitBreakerServiceProvider($this->app);
+        $provider->register();
+
+        $this->assertInstanceOf(Clock::class, $this->app->make(Clock::class));
+        $this->assertInstanceOf(FailureClassifier::class, $this->app->make(FailureClassifier::class));
+        $this->assertInstanceOf(CircuitStore::class, $this->app->make(CircuitStore::class));
+        $this->assertInstanceOf(CircuitLock::class, $this->app->make(CircuitLock::class));
+        $this->assertInstanceOf(CircuitPolicyResolver::class, $this->app->make(CircuitPolicyResolver::class));
+        $this->assertInstanceOf(ClosedStateHandler::class, $this->app->make(ClosedStateHandler::class));
+        $this->assertInstanceOf(HalfOpenStateHandler::class, $this->app->make(HalfOpenStateHandler::class));
+        $this->assertInstanceOf(OpenStateHandler::class, $this->app->make(OpenStateHandler::class));
+        $this->assertInstanceOf(CircuitStateMachine::class, $this->app->make(CircuitStateMachine::class));
+        $this->assertInstanceOf(CircuitBreaker::class, $this->app->make(CircuitBreaker::class));
+
+        // Test executing through resolved CircuitBreaker
+        $circuitBreaker = $this->app->make(CircuitBreaker::class);
+        $result = $circuitBreaker->execute('test-resolved', fn () => 'hello-from-container');
+        $this->assertSame('hello-from-container', $result);
+    }
+}
