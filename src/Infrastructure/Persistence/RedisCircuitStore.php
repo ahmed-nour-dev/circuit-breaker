@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace AhmedNour\CircuitBreaker\Infrastructure\Persistence;
 
-use AhmedNour\CircuitBreaker\Domain\Exceptions\CircuitInfrastructureException;
 use AhmedNour\CircuitBreaker\Domain\Circuit;
 use AhmedNour\CircuitBreaker\Domain\CircuitState;
 use AhmedNour\CircuitBreaker\Domain\Contracts\CircuitStore;
+use AhmedNour\CircuitBreaker\Domain\Exceptions\CircuitInfrastructureException;
 use AhmedNour\CircuitBreaker\Infrastructure\Redis\RedisConnectionFactory;
 use DateTimeImmutable;
 use DateTimeInterface;
@@ -16,14 +16,13 @@ use Throwable;
 final class RedisCircuitStore implements CircuitStore
 {
     /**
-     * @param RedisConnectionFactory|mixed $redis Redis connection factory or raw client instance
-     * @param string $keyPrefix Prefix for Redis keys
+     * @param  RedisConnectionFactory|mixed  $redis  Redis connection factory or raw client instance
+     * @param  string  $keyPrefix  Prefix for Redis keys
      */
     public function __construct(
         private readonly mixed $redis,
         private readonly string $keyPrefix = 'circuit:',
-    ) {
-    }
+    ) {}
 
     public function get(string $name): Circuit
     {
@@ -102,7 +101,7 @@ final class RedisCircuitStore implements CircuitStore
 
     private function formatKey(string $name): string
     {
-        return $this->keyPrefix . $name;
+        return $this->keyPrefix.$name;
     }
 
     /**

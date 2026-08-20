@@ -16,8 +16,7 @@ final class OpenStateHandler implements CircuitStateHandler
         private readonly CircuitStore $store,
         private readonly Clock $clock,
         private readonly CircuitStateHandler $halfOpenHandler,
-    ) {
-    }
+    ) {}
 
     public function supports(CircuitState $state): bool
     {

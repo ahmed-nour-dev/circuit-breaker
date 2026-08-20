@@ -15,30 +15,33 @@ use AhmedNour\CircuitBreaker\Domain\StateMachine\CircuitStateMachine;
 use AhmedNour\CircuitBreaker\Domain\StateMachine\ClosedStateHandler;
 use AhmedNour\CircuitBreaker\Domain\StateMachine\HalfOpenStateHandler;
 use AhmedNour\CircuitBreaker\Domain\StateMachine\OpenStateHandler;
-use DateTimeImmutable;
-use DateTimeZone;
-use PHPUnit\Framework\TestCase;
 use AhmedNour\CircuitBreaker\Tests\Support\AlwaysTripFailureClassifier;
 use AhmedNour\CircuitBreaker\Tests\Support\FakeClock;
 use AhmedNour\CircuitBreaker\Tests\Support\FakeLock;
 use AhmedNour\CircuitBreaker\Tests\Support\InMemoryCircuitStore;
+use DateTimeImmutable;
+use DateTimeZone;
+use PHPUnit\Framework\TestCase;
 
 final class QueueIntegrationExampleTest extends TestCase
 {
     private InMemoryCircuitStore $store;
+
     private FakeClock $clock;
+
     private FakeLock $lock;
+
     private CircuitBreaker $circuitBreaker;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->store = new InMemoryCircuitStore();
+        $this->store = new InMemoryCircuitStore;
         $this->clock = new FakeClock(new DateTimeImmutable('2026-08-17 12:00:00', new DateTimeZone('UTC')));
-        $this->lock = new FakeLock();
+        $this->lock = new FakeLock;
 
         $policyResolver = new CircuitPolicyResolver([], new CircuitPolicy(3, 300, 10));
-        $classifier = new AlwaysTripFailureClassifier();
+        $classifier = new AlwaysTripFailureClassifier;
 
         $closed = new ClosedStateHandler($this->store, $classifier, $this->clock);
         $halfOpen = new HalfOpenStateHandler($this->lock, $this->store, $classifier, $this->clock);
@@ -103,13 +106,14 @@ final class QueueIntegrationExampleTest extends TestCase
 final class SimulatedSendSmsJob
 {
     public bool $wasReleased = false;
+
     public int $releaseDelaySeconds = 0;
+
     public bool $wasProcessed = false;
 
     public function __construct(
         public readonly int $smsId,
-    ) {
-    }
+    ) {}
 
     public function handle(CircuitBreaker $circuitBreaker): void
     {

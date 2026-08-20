@@ -12,6 +12,7 @@ use AhmedNour\CircuitBreaker\Domain\CircuitPolicy;
 use AhmedNour\CircuitBreaker\Domain\CircuitState;
 use AhmedNour\CircuitBreaker\Domain\Contracts\CircuitLock;
 use AhmedNour\CircuitBreaker\Domain\Contracts\CircuitStore;
+use AhmedNour\CircuitBreaker\Domain\Contracts\InfrastructureFailureHandler;
 use AhmedNour\CircuitBreaker\Domain\Contracts\InfrastructureFallback;
 use AhmedNour\CircuitBreaker\Domain\Exceptions\CircuitBusyException;
 use AhmedNour\CircuitBreaker\Domain\Exceptions\CircuitInfrastructureException;
@@ -23,29 +24,28 @@ use AhmedNour\CircuitBreaker\Infrastructure\Failure\FailClosedHandler;
 use AhmedNour\CircuitBreaker\Infrastructure\Failure\FailOpenHandler;
 use AhmedNour\CircuitBreaker\Infrastructure\Failure\FallbackHandler;
 use AhmedNour\CircuitBreaker\Infrastructure\Failure\HttpFailureClassifier;
-use AhmedNour\CircuitBreaker\Infrastructure\Lock\RedisCircuitLock;
-use AhmedNour\CircuitBreaker\Infrastructure\Persistence\RedisCircuitStore;
-use DateTimeImmutable;
-use DateTimeZone;
-use PHPUnit\Framework\TestCase;
-use Redis;
-use RedisException;
 use AhmedNour\CircuitBreaker\Tests\Support\FakeClock;
 use AhmedNour\CircuitBreaker\Tests\Support\FakeLock;
 use AhmedNour\CircuitBreaker\Tests\Support\InMemoryCircuitStore;
+use DateTimeImmutable;
+use DateTimeZone;
+use PHPUnit\Framework\TestCase;
+use RedisException;
 use Throwable;
 
 final class CircuitBreakerInfrastructureFailureIntegrationTest extends TestCase
 {
     private FakeClock $clock;
+
     private HttpFailureClassifier $classifier;
+
     private CircuitPolicyResolver $policyResolver;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->clock = new FakeClock(new DateTimeImmutable('2026-08-17 12:00:00', new DateTimeZone('UTC')));
-        $this->classifier = new HttpFailureClassifier();
+        $this->classifier = new HttpFailureClassifier;
         $this->policyResolver = new CircuitPolicyResolver([], new CircuitPolicy(3, 60, 10));
     }
 
@@ -76,11 +76,13 @@ final class CircuitBreakerInfrastructureFailureIntegrationTest extends TestCase
      */
     public function test_fail_open_executes_callback_when_store_fails(): void
     {
-        $failingStore = new class implements CircuitStore {
+        $failingStore = new class implements CircuitStore
+        {
             public function get(string $name): Circuit
             {
                 throw new CircuitInfrastructureException(circuit: $name, previous: new RedisException('Redis connection refused'));
             }
+
             public function save(Circuit $circuit): void
             {
                 throw new CircuitInfrastructureException(circuit: $circuit->name, previous: new RedisException('Redis connection refused'));
@@ -89,13 +91,14 @@ final class CircuitBreakerInfrastructureFailureIntegrationTest extends TestCase
 
         $breaker = $this->createCircuitBreaker(
             store: $failingStore,
-            lock: new FakeLock(),
-            failureHandler: new FailOpenHandler(),
+            lock: new FakeLock,
+            failureHandler: new FailOpenHandler,
         );
 
         $callbackExecuted = false;
         $result = $breaker->execute('twilio-sms', function () use (&$callbackExecuted) {
             $callbackExecuted = true;
+
             return 'sms-sent-successfully';
         });
 
@@ -110,11 +113,13 @@ final class CircuitBreakerInfrastructureFailureIntegrationTest extends TestCase
      */
     public function test_fail_closed_rejects_operation_when_store_fails(): void
     {
-        $failingStore = new class implements CircuitStore {
+        $failingStore = new class implements CircuitStore
+        {
             public function get(string $name): Circuit
             {
                 throw new CircuitInfrastructureException(circuit: $name, previous: new RedisException('Cluster down'));
             }
+
             public function save(Circuit $circuit): void
             {
                 throw new CircuitInfrastructureException(circuit: $circuit->name, previous: new RedisException('Cluster down'));
@@ -123,8 +128,8 @@ final class CircuitBreakerInfrastructureFailureIntegrationTest extends TestCase
 
         $breaker = $this->createCircuitBreaker(
             store: $failingStore,
-            lock: new FakeLock(),
-            failureHandler: new FailClosedHandler(),
+            lock: new FakeLock,
+            failureHandler: new FailClosedHandler,
         );
 
         $callbackExecuted = false;
@@ -135,6 +140,7 @@ final class CircuitBreakerInfrastructureFailureIntegrationTest extends TestCase
         try {
             $breaker->execute('payment-gateway', function () use (&$callbackExecuted) {
                 $callbackExecuted = true;
+
                 return 'payment-token';
             });
         } finally {
@@ -149,30 +155,35 @@ final class CircuitBreakerInfrastructureFailureIntegrationTest extends TestCase
      */
     public function test_fallback_strategy_is_executed_when_primary_store_fails(): void
     {
-        $failingStore = new class implements CircuitStore {
+        $failingStore = new class implements CircuitStore
+        {
             public function get(string $name): Circuit
             {
                 throw new CircuitInfrastructureException(circuit: $name, previous: new RedisException('Redis unreachable'));
             }
+
             public function save(Circuit $circuit): void
             {
                 throw new CircuitInfrastructureException(circuit: $circuit->name, previous: new RedisException('Redis unreachable'));
             }
         };
 
-        $fallbackStrategy = new class implements InfrastructureFallback {
+        $fallbackStrategy = new class implements InfrastructureFallback
+        {
             public bool $invoked = false;
+
             public function execute(CircuitExecution $execution, Throwable $exception): mixed
             {
                 $this->invoked = true;
+
                 // Fallback executes the callback using an in-memory backup or degraded mode
-                return ($execution->callback)() . '-fallback-handled';
+                return ($execution->callback)().'-fallback-handled';
             }
         };
 
         $breaker = $this->createCircuitBreaker(
             store: $failingStore,
-            lock: new FakeLock(),
+            lock: new FakeLock,
             failureHandler: new FallbackHandler($fallbackStrategy),
         );
 
@@ -189,18 +200,21 @@ final class CircuitBreakerInfrastructureFailureIntegrationTest extends TestCase
      */
     public function test_lock_busy_throws_circuit_busy_exception_and_does_not_invoke_failure_handler(): void
     {
-        $store = new InMemoryCircuitStore();
+        $store = new InMemoryCircuitStore;
         $store->save(new Circuit('twilio-sms', CircuitState::HalfOpen, 3));
 
-        $fakeLock = new FakeLock();
+        $fakeLock = new FakeLock;
         $fakeLock->setShouldFailAcquire(true); // Lock already held by another worker
 
         $handlerInvoked = false;
-        $customFailureHandler = new class ($handlerInvoked) implements \AhmedNour\CircuitBreaker\Domain\Contracts\InfrastructureFailureHandler {
+        $customFailureHandler = new class($handlerInvoked) implements InfrastructureFailureHandler
+        {
             public function __construct(public bool &$invoked) {}
+
             public function handle(Throwable $exception, CircuitExecution $execution): mixed
             {
                 $this->invoked = true;
+
                 return ($execution->callback)();
             }
         };
@@ -228,10 +242,11 @@ final class CircuitBreakerInfrastructureFailureIntegrationTest extends TestCase
      */
     public function test_lock_infrastructure_failure_invokes_failure_handler(): void
     {
-        $store = new InMemoryCircuitStore();
+        $store = new InMemoryCircuitStore;
         $store->save(new Circuit('twilio-sms', CircuitState::HalfOpen, 3));
 
-        $failingLock = new class implements CircuitLock {
+        $failingLock = new class implements CircuitLock
+        {
             public function acquire(string $circuit, int $seconds): never
             {
                 throw new CircuitInfrastructureException(circuit: $circuit, previous: new RedisException('Lock manager disconnected'));
@@ -241,7 +256,7 @@ final class CircuitBreakerInfrastructureFailureIntegrationTest extends TestCase
         $breaker = $this->createCircuitBreaker(
             store: $store,
             lock: $failingLock,
-            failureHandler: new FailOpenHandler(),
+            failureHandler: new FailOpenHandler,
         );
 
         // Under Fail Open, the probe proceeds despite lock infrastructure outage

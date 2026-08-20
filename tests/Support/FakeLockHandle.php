@@ -13,8 +13,7 @@ final class FakeLockHandle implements LockHandle
 
     public function __construct(
         private readonly ?Closure $onRelease = null,
-    ) {
-    }
+    ) {}
 
     public function release(): void
     {

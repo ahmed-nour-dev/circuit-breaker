@@ -20,8 +20,7 @@ final class HalfOpenStateHandler implements CircuitStateHandler
         private readonly CircuitStore $store,
         private readonly FailureClassifier $failureClassifier,
         private readonly Clock $clock,
-    ) {
-    }
+    ) {}
 
     public function supports(CircuitState $state): bool
     {
@@ -48,7 +47,7 @@ final class HalfOpenStateHandler implements CircuitStateHandler
             return $result;
         } catch (Throwable $e) {
             if ($this->failureClassifier->shouldTrip($e)) {
-                $until = $this->clock->now()->modify('+' . $execution->policy->recoveryTimeout . ' seconds');
+                $until = $this->clock->now()->modify('+'.$execution->policy->recoveryTimeout.' seconds');
                 $execution->circuit->open($until);
                 $this->store->save($execution->circuit);
             }

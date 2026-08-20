@@ -23,26 +23,28 @@ use AhmedNour\CircuitBreaker\Domain\StateMachine\OpenStateHandler;
 use AhmedNour\CircuitBreaker\Infrastructure\Failure\FailClosedHandler;
 use AhmedNour\CircuitBreaker\Infrastructure\Failure\FailOpenHandler;
 use AhmedNour\CircuitBreaker\Infrastructure\Failure\FallbackHandler;
-use PHPUnit\Framework\TestCase;
-use RuntimeException;
 use AhmedNour\CircuitBreaker\Tests\Support\AlwaysTripFailureClassifier;
 use AhmedNour\CircuitBreaker\Tests\Support\FakeClock;
 use AhmedNour\CircuitBreaker\Tests\Support\FakeLock;
 use AhmedNour\CircuitBreaker\Tests\Support\InMemoryCircuitStore;
+use PHPUnit\Framework\TestCase;
+use RuntimeException;
 use Throwable;
 
 final class CircuitBreakerInfrastructureFailureTest extends TestCase
 {
     private CircuitPolicyResolver $policyResolver;
+
     private AlwaysTripFailureClassifier $classifier;
+
     private FakeClock $clock;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->policyResolver = new CircuitPolicyResolver([], new CircuitPolicy(3, 60, 10));
-        $this->classifier = new AlwaysTripFailureClassifier();
-        $this->clock = new FakeClock();
+        $this->classifier = new AlwaysTripFailureClassifier;
+        $this->clock = new FakeClock;
     }
 
     private function createBreakerWithStore(
@@ -50,7 +52,7 @@ final class CircuitBreakerInfrastructureFailureTest extends TestCase
         ?CircuitLock $lock = null,
         $failureHandler = null,
     ): CircuitBreaker {
-        $lockInstance = $lock ?? new FakeLock();
+        $lockInstance = $lock ?? new FakeLock;
         $closed = new ClosedStateHandler($store, $this->classifier, $this->clock);
         $halfOpen = new HalfOpenStateHandler($lockInstance, $store, $this->classifier, $this->clock);
         $open = new OpenStateHandler($store, $this->clock, $halfOpen);
@@ -67,18 +69,20 @@ final class CircuitBreakerInfrastructureFailureTest extends TestCase
 
     public function test_fail_open_executes_callback_when_store_throws_infrastructure_exception(): void
     {
-        $failingStore = new class implements CircuitStore {
+        $failingStore = new class implements CircuitStore
+        {
             public function get(string $name): Circuit
             {
                 throw new CircuitInfrastructureException(circuit: $name);
             }
+
             public function save(Circuit $circuit): void
             {
                 throw new CircuitInfrastructureException(circuit: $circuit->name);
             }
         };
 
-        $breaker = $this->createBreakerWithStore($failingStore, failureHandler: new FailOpenHandler());
+        $breaker = $this->createBreakerWithStore($failingStore, failureHandler: new FailOpenHandler);
 
         $result = $breaker->execute('twilio-sms', fn () => 'message-sent-despite-redis-down');
 
@@ -87,18 +91,20 @@ final class CircuitBreakerInfrastructureFailureTest extends TestCase
 
     public function test_fail_closed_throws_exception_when_store_throws_infrastructure_exception(): void
     {
-        $failingStore = new class implements CircuitStore {
+        $failingStore = new class implements CircuitStore
+        {
             public function get(string $name): Circuit
             {
                 throw new CircuitInfrastructureException(circuit: $name);
             }
+
             public function save(Circuit $circuit): void
             {
                 throw new CircuitInfrastructureException(circuit: $circuit->name);
             }
         };
 
-        $breaker = $this->createBreakerWithStore($failingStore, failureHandler: new FailClosedHandler());
+        $breaker = $this->createBreakerWithStore($failingStore, failureHandler: new FailClosedHandler);
 
         $callbackInvoked = false;
         $this->expectException(CircuitInfrastructureException::class);
@@ -107,6 +113,7 @@ final class CircuitBreakerInfrastructureFailureTest extends TestCase
         try {
             $breaker->execute('payment-gateway', function () use (&$callbackInvoked) {
                 $callbackInvoked = true;
+
                 return 'payment-processed';
             });
         } finally {
@@ -116,23 +123,28 @@ final class CircuitBreakerInfrastructureFailureTest extends TestCase
 
     public function test_fallback_handler_is_executed_when_store_fails(): void
     {
-        $failingStore = new class implements CircuitStore {
+        $failingStore = new class implements CircuitStore
+        {
             public function get(string $name): Circuit
             {
                 throw new CircuitInfrastructureException(circuit: $name);
             }
+
             public function save(Circuit $circuit): void
             {
                 throw new CircuitInfrastructureException(circuit: $circuit->name);
             }
         };
 
-        $fallback = new class implements InfrastructureFallback {
+        $fallback = new class implements InfrastructureFallback
+        {
             public bool $executed = false;
+
             public function execute(CircuitExecution $execution, Throwable $exception): mixed
             {
                 $this->executed = true;
-                return 'fallback-result-for-' . $execution->circuit->name;
+
+                return 'fallback-result-for-'.$execution->circuit->name;
             }
         };
 
@@ -146,17 +158,18 @@ final class CircuitBreakerInfrastructureFailureTest extends TestCase
 
     public function test_lock_infrastructure_failure_triggers_failure_handler(): void
     {
-        $store = new InMemoryCircuitStore();
+        $store = new InMemoryCircuitStore;
         $store->save(new Circuit('twilio-sms', CircuitState::HalfOpen, 3));
 
-        $failingLock = new class implements CircuitLock {
+        $failingLock = new class implements CircuitLock
+        {
             public function acquire(string $circuit, int $seconds): never
             {
                 throw new CircuitInfrastructureException(circuit: $circuit, message: 'Redis cluster lock error');
             }
         };
 
-        $breaker = $this->createBreakerWithStore($store, lock: $failingLock, failureHandler: new FailOpenHandler());
+        $breaker = $this->createBreakerWithStore($store, lock: $failingLock, failureHandler: new FailOpenHandler);
 
         $result = $breaker->execute('twilio-sms', fn () => 'half-open-executed-via-fail-open');
 
@@ -165,13 +178,13 @@ final class CircuitBreakerInfrastructureFailureTest extends TestCase
 
     public function test_lock_busy_is_not_treated_as_infrastructure_failure(): void
     {
-        $store = new InMemoryCircuitStore();
+        $store = new InMemoryCircuitStore;
         $store->save(new Circuit('twilio-sms', CircuitState::HalfOpen, 3));
 
-        $fakeLock = new FakeLock();
+        $fakeLock = new FakeLock;
         $fakeLock->setShouldFailAcquire(true); // Simulates another worker holding lock (busy)
 
-        $breaker = $this->createBreakerWithStore($store, lock: $fakeLock, failureHandler: new FailOpenHandler());
+        $breaker = $this->createBreakerWithStore($store, lock: $fakeLock, failureHandler: new FailOpenHandler);
 
         $this->expectException(CircuitBusyException::class);
         $this->expectExceptionMessage("Circuit 'twilio-sms' is HALF-OPEN and another worker is currently probing the dependency.");
@@ -181,7 +194,7 @@ final class CircuitBreakerInfrastructureFailureTest extends TestCase
 
     public function test_circuit_open_is_not_treated_as_infrastructure_failure(): void
     {
-        $store = new InMemoryCircuitStore();
+        $store = new InMemoryCircuitStore;
         $store->save(new Circuit(
             name: 'twilio-sms',
             state: CircuitState::Open,
@@ -189,7 +202,7 @@ final class CircuitBreakerInfrastructureFailureTest extends TestCase
             openedUntil: $this->clock->now()->modify('+60 seconds'),
         ));
 
-        $breaker = $this->createBreakerWithStore($store, failureHandler: new FailOpenHandler());
+        $breaker = $this->createBreakerWithStore($store, failureHandler: new FailOpenHandler);
 
         $this->expectException(CircuitOpenException::class);
         $this->expectExceptionMessage("Circuit 'twilio-sms' is OPEN and failing fast.");
@@ -199,9 +212,9 @@ final class CircuitBreakerInfrastructureFailureTest extends TestCase
 
     public function test_provider_failure_is_not_caught_by_failure_handler(): void
     {
-        $store = new InMemoryCircuitStore();
+        $store = new InMemoryCircuitStore;
 
-        $breaker = $this->createBreakerWithStore($store, failureHandler: new FailOpenHandler());
+        $breaker = $this->createBreakerWithStore($store, failureHandler: new FailOpenHandler);
 
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('Twilio 500 internal server error');

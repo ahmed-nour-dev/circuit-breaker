@@ -9,14 +9,12 @@ use AhmedNour\CircuitBreaker\Domain\CircuitPolicy;
 final class CircuitPolicyResolver
 {
     /**
-     * @param array<string, array{failure_threshold?: int, recovery_timeout?: int, half_open_lock_timeout?: int}> $providers
-     * @param CircuitPolicy|null $defaultPolicy
+     * @param  array<string, array{failure_threshold?: int, recovery_timeout?: int, half_open_lock_timeout?: int}>  $providers
      */
     public function __construct(
         private readonly array $providers = [],
         private readonly ?CircuitPolicy $defaultPolicy = null,
-    ) {
-    }
+    ) {}
 
     public function resolve(string $name): CircuitPolicy
     {

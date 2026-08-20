@@ -28,13 +28,14 @@ use AhmedNour\CircuitBreaker\Infrastructure\Redis\RedisConnectionFactory;
 use AhmedNour\CircuitBreaker\Infrastructure\Time\SystemClock;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Octane\Events\OperationTerminated;
 
 final class CircuitBreakerServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
         $this->mergeConfigFrom(
-            dirname(__DIR__, 2) . '/config/circuit-breaker.php',
+            dirname(__DIR__, 2).'/config/circuit-breaker.php',
             'circuit-breaker'
         );
 
@@ -134,13 +135,13 @@ final class CircuitBreakerServiceProvider extends ServiceProvider
             $strategy = (string) ($config?->get('circuit-breaker.infrastructure_failure.strategy') ?? 'fail_open');
 
             return match ($strategy) {
-                'fail_closed', InfrastructureFailurePolicy::FailClosed->value => new FailClosedHandler(),
+                'fail_closed', InfrastructureFailurePolicy::FailClosed->value => new FailClosedHandler,
                 'fallback', InfrastructureFailurePolicy::Fallback->value => new FallbackHandler(
                     $app->make(
                         (string) ($config?->get('circuit-breaker.infrastructure_failure.fallback') ?? InfrastructureFallback::class)
                     )
                 ),
-                default => new FailOpenHandler(),
+                default => new FailOpenHandler,
             };
         });
 
@@ -166,7 +167,7 @@ final class CircuitBreakerServiceProvider extends ServiceProvider
     {
         if (method_exists($this->app, 'runningInConsole') && $this->app->runningInConsole()) {
             $this->publishes([
-                dirname(__DIR__, 2) . '/config/circuit-breaker.php' => function_exists('config_path') ? config_path('circuit-breaker.php') : dirname(__DIR__, 2) . '/config/circuit-breaker.php',
+                dirname(__DIR__, 2).'/config/circuit-breaker.php' => function_exists('config_path') ? config_path('circuit-breaker.php') : dirname(__DIR__, 2).'/config/circuit-breaker.php',
             ], 'circuit-breaker-config');
         }
 
@@ -202,12 +203,12 @@ final class CircuitBreakerServiceProvider extends ServiceProvider
     private function registerOctaneListeners(): void
     {
         // Only register if Octane events exist (package is installed)
-        if (! class_exists(\Laravel\Octane\Events\OperationTerminated::class)) {
+        if (! class_exists(OperationTerminated::class)) {
             return;
         }
 
         $this->app['events']->listen(
-            \Laravel\Octane\Events\OperationTerminated::class,
+            OperationTerminated::class,
             function () {
                 // Disconnect the factory's pooled connection after each request.
                 // On the next request, the factory will reconnect lazily.

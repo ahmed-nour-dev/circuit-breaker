@@ -18,6 +18,7 @@ final class InMemoryCircuitStore implements CircuitStore
         if (isset($this->circuits[$name])) {
             // Return a cloned instance to simulate storage retrieval
             $c = $this->circuits[$name];
+
             return new Circuit($c->name, $c->state, $c->failures, $c->openedUntil);
         }
 

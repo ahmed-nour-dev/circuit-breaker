@@ -38,7 +38,7 @@ final class CircuitInfrastructureExceptionTest extends TestCase
 
     public function test_default_message_without_circuit_name(): void
     {
-        $exception = new CircuitInfrastructureException();
+        $exception = new CircuitInfrastructureException;
 
         $this->assertSame('', $exception->circuit);
         $this->assertSame('Circuit infrastructure failure.', $exception->getMessage());

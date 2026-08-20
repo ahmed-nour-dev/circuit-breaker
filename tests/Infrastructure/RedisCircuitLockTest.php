@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace AhmedNour\CircuitBreaker\Tests\Infrastructure;
 
+use AhmedNour\CircuitBreaker\Domain\Exceptions\CircuitInfrastructureException;
 use AhmedNour\CircuitBreaker\Infrastructure\Lock\RedisCircuitLock;
 use AhmedNour\CircuitBreaker\Infrastructure\Lock\RedisLockHandle;
 use PHPUnit\Framework\TestCase;
@@ -12,13 +13,14 @@ use Redis;
 final class RedisCircuitLockTest extends TestCase
 {
     private Redis $redis;
+
     private RedisCircuitLock $lock;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->redis = new Redis();
+        $this->redis = new Redis;
         $host = (string) (getenv('REDIS_HOST') ?: '127.0.0.1');
         $port = (int) (getenv('REDIS_PORT') ?: 6379);
 
@@ -37,7 +39,7 @@ final class RedisCircuitLockTest extends TestCase
     protected function tearDown(): void
     {
         $keys = $this->redis->keys('test_lock:*');
-        if (!empty($keys)) {
+        if (! empty($keys)) {
             $this->redis->del($keys);
         }
 
@@ -106,7 +108,8 @@ final class RedisCircuitLockTest extends TestCase
 
     public function test_acquire_wraps_redis_exception_in_circuit_infrastructure_exception(): void
     {
-        $failingClient = new class {
+        $failingClient = new class
+        {
             public function set(string $key, string $token, array $options): never
             {
                 throw new \RedisException('Connection reset by peer');
@@ -115,10 +118,9 @@ final class RedisCircuitLockTest extends TestCase
 
         $lock = new RedisCircuitLock($failingClient, 'test_lock:', ':probe-lock');
 
-        $this->expectException(\AhmedNour\CircuitBreaker\Domain\Exceptions\CircuitInfrastructureException::class);
+        $this->expectException(CircuitInfrastructureException::class);
         $this->expectExceptionMessage("Circuit 'failing-circuit' infrastructure failure.");
 
         $lock->acquire('failing-circuit', 5);
     }
 }
-

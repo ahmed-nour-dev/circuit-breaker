@@ -17,8 +17,7 @@ final class ClosedStateHandler implements CircuitStateHandler
         private readonly CircuitStore $store,
         private readonly FailureClassifier $failureClassifier,
         private readonly Clock $clock,
-    ) {
-    }
+    ) {}
 
     public function supports(CircuitState $state): bool
     {
@@ -42,7 +41,7 @@ final class ClosedStateHandler implements CircuitStateHandler
             $execution->circuit->recordFailure();
 
             if ($execution->circuit->failures >= $execution->policy->failureThreshold) {
-                $until = $this->clock->now()->modify('+' . $execution->policy->recoveryTimeout . ' seconds');
+                $until = $this->clock->now()->modify('+'.$execution->policy->recoveryTimeout.' seconds');
                 $execution->circuit->open($until);
             }
 

@@ -16,7 +16,7 @@ final class FailClosedHandlerTest extends TestCase
 {
     public function test_rethrows_circuit_infrastructure_exception(): void
     {
-        $handler = new FailClosedHandler();
+        $handler = new FailClosedHandler;
 
         $originalException = new CircuitInfrastructureException('payment-gateway');
         $execution = new CircuitExecution(
@@ -33,7 +33,7 @@ final class FailClosedHandlerTest extends TestCase
 
     public function test_wraps_other_exception_in_circuit_infrastructure_exception(): void
     {
-        $handler = new FailClosedHandler();
+        $handler = new FailClosedHandler;
 
         $nativeException = new Exception('Redis socket write error');
         $execution = new CircuitExecution(

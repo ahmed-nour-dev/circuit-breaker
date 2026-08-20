@@ -45,16 +45,15 @@ final class HttpFailureClassifier implements FailureClassifier
     ];
 
     /**
-     * @param list<class-string<Throwable>> $additionalTripClasses
-     * @param list<class-string<Throwable>> $ignoreClasses
-     * @param list<int> $tripStatusCodes
+     * @param  list<class-string<Throwable>>  $additionalTripClasses
+     * @param  list<class-string<Throwable>>  $ignoreClasses
+     * @param  list<int>  $tripStatusCodes
      */
     public function __construct(
         private readonly array $additionalTripClasses = [],
         private readonly array $ignoreClasses = [],
         private readonly array $tripStatusCodes = [500, 502, 503, 504, 520, 521, 522, 523, 524],
-    ) {
-    }
+    ) {}
 
     public function shouldTrip(Throwable $exception): bool
     {

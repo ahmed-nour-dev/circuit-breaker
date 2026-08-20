@@ -11,29 +11,34 @@ use AhmedNour\CircuitBreaker\Domain\CircuitState;
 use AhmedNour\CircuitBreaker\Domain\Exceptions\CircuitOpenException;
 use AhmedNour\CircuitBreaker\Domain\StateMachine\HalfOpenStateHandler;
 use AhmedNour\CircuitBreaker\Domain\StateMachine\OpenStateHandler;
-use DateTimeImmutable;
-use DateTimeZone;
-use PHPUnit\Framework\TestCase;
 use AhmedNour\CircuitBreaker\Tests\Support\AlwaysTripFailureClassifier;
 use AhmedNour\CircuitBreaker\Tests\Support\FakeClock;
 use AhmedNour\CircuitBreaker\Tests\Support\FakeLock;
 use AhmedNour\CircuitBreaker\Tests\Support\InMemoryCircuitStore;
+use DateTimeImmutable;
+use DateTimeZone;
+use PHPUnit\Framework\TestCase;
 
 final class OpenStateHandlerTest extends TestCase
 {
     private InMemoryCircuitStore $store;
+
     private FakeClock $clock;
+
     private FakeLock $lock;
+
     private CircuitPolicy $policy;
+
     private HalfOpenStateHandler $halfOpenHandler;
+
     private OpenStateHandler $handler;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->store = new InMemoryCircuitStore();
+        $this->store = new InMemoryCircuitStore;
         $this->clock = new FakeClock(new DateTimeImmutable('2026-08-17 12:00:00', new DateTimeZone('UTC')));
-        $this->lock = new FakeLock();
+        $this->lock = new FakeLock;
         $this->policy = new CircuitPolicy(
             failureThreshold: 3,
             recoveryTimeout: 60,
@@ -43,7 +48,7 @@ final class OpenStateHandlerTest extends TestCase
         $this->halfOpenHandler = new HalfOpenStateHandler(
             lock: $this->lock,
             store: $this->store,
-            failureClassifier: new AlwaysTripFailureClassifier(),
+            failureClassifier: new AlwaysTripFailureClassifier,
             clock: $this->clock,
         );
 
@@ -78,6 +83,7 @@ final class OpenStateHandlerTest extends TestCase
             policy: $this->policy,
             callback: function () use (&$executed) {
                 $executed = true;
+
                 return 'probe-result';
             },
         );
@@ -112,6 +118,7 @@ final class OpenStateHandlerTest extends TestCase
             policy: $this->policy,
             callback: function () use (&$executed) {
                 $executed = true;
+
                 return 'probe-success';
             },
         );

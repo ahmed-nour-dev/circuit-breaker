@@ -23,7 +23,7 @@ final class CircuitBreaker
         private readonly CircuitPolicyResolver $policyResolver,
         ?InfrastructureFailureHandler $failureHandler = null,
     ) {
-        $this->failureHandler = $failureHandler ?? new FailOpenHandler();
+        $this->failureHandler = $failureHandler ?? new FailOpenHandler;
     }
 
     public function execute(string $name, Closure $callback): mixed

@@ -9,25 +9,27 @@ use AhmedNour\CircuitBreaker\Domain\CircuitExecution;
 use AhmedNour\CircuitBreaker\Domain\CircuitPolicy;
 use AhmedNour\CircuitBreaker\Domain\CircuitState;
 use AhmedNour\CircuitBreaker\Domain\StateMachine\ClosedStateHandler;
-use DateTimeImmutable;
-use DateTimeZone;
-use PHPUnit\Framework\TestCase;
-use RuntimeException;
 use AhmedNour\CircuitBreaker\Tests\Support\AlwaysTripFailureClassifier;
 use AhmedNour\CircuitBreaker\Tests\Support\FakeClock;
 use AhmedNour\CircuitBreaker\Tests\Support\InMemoryCircuitStore;
 use AhmedNour\CircuitBreaker\Tests\Support\NeverTripFailureClassifier;
+use DateTimeImmutable;
+use DateTimeZone;
+use PHPUnit\Framework\TestCase;
+use RuntimeException;
 
 final class ClosedStateHandlerTest extends TestCase
 {
     private InMemoryCircuitStore $store;
+
     private FakeClock $clock;
+
     private CircuitPolicy $policy;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->store = new InMemoryCircuitStore();
+        $this->store = new InMemoryCircuitStore;
         $this->clock = new FakeClock(new DateTimeImmutable('2026-08-17 12:00:00', new DateTimeZone('UTC')));
         $this->policy = new CircuitPolicy(
             failureThreshold: 3,
@@ -40,7 +42,7 @@ final class ClosedStateHandlerTest extends TestCase
     {
         $handler = new ClosedStateHandler(
             store: $this->store,
-            failureClassifier: new AlwaysTripFailureClassifier(),
+            failureClassifier: new AlwaysTripFailureClassifier,
             clock: $this->clock,
         );
 
@@ -56,7 +58,7 @@ final class ClosedStateHandlerTest extends TestCase
 
         $handler = new ClosedStateHandler(
             store: $this->store,
-            failureClassifier: new AlwaysTripFailureClassifier(),
+            failureClassifier: new AlwaysTripFailureClassifier,
             clock: $this->clock,
         );
 
@@ -85,7 +87,7 @@ final class ClosedStateHandlerTest extends TestCase
 
         $handler = new ClosedStateHandler(
             store: $this->store,
-            failureClassifier: new AlwaysTripFailureClassifier(),
+            failureClassifier: new AlwaysTripFailureClassifier,
             clock: $this->clock,
         );
 
@@ -117,7 +119,7 @@ final class ClosedStateHandlerTest extends TestCase
 
         $handler = new ClosedStateHandler(
             store: $this->store,
-            failureClassifier: new AlwaysTripFailureClassifier(),
+            failureClassifier: new AlwaysTripFailureClassifier,
             clock: $this->clock,
         );
 
@@ -152,7 +154,7 @@ final class ClosedStateHandlerTest extends TestCase
 
         $handler = new ClosedStateHandler(
             store: $this->store,
-            failureClassifier: new NeverTripFailureClassifier(),
+            failureClassifier: new NeverTripFailureClassifier,
             clock: $this->clock,
         );
 

@@ -12,8 +12,7 @@ final class SystemClock implements Clock
 {
     public function __construct(
         private readonly ?DateTimeZone $timezone = null,
-    ) {
-    }
+    ) {}
 
     public function now(): DateTimeImmutable
     {

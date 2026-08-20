@@ -6,6 +6,7 @@ namespace AhmedNour\CircuitBreaker\Tests\Infrastructure;
 
 use AhmedNour\CircuitBreaker\Domain\Circuit;
 use AhmedNour\CircuitBreaker\Domain\CircuitState;
+use AhmedNour\CircuitBreaker\Domain\Exceptions\CircuitInfrastructureException;
 use AhmedNour\CircuitBreaker\Infrastructure\Persistence\RedisCircuitStore;
 use DateTimeImmutable;
 use DateTimeZone;
@@ -15,13 +16,14 @@ use Redis;
 final class RedisCircuitStoreTest extends TestCase
 {
     private Redis $redis;
+
     private RedisCircuitStore $store;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->redis = new Redis();
+        $this->redis = new Redis;
         $host = (string) (getenv('REDIS_HOST') ?: '127.0.0.1');
         $port = (int) (getenv('REDIS_PORT') ?: 6379);
 
@@ -41,7 +43,7 @@ final class RedisCircuitStoreTest extends TestCase
     {
         // Clean up test keys
         $keys = $this->redis->keys('test_circuit:*');
-        if (!empty($keys)) {
+        if (! empty($keys)) {
             $this->redis->del($keys);
         }
 
@@ -133,7 +135,8 @@ final class RedisCircuitStoreTest extends TestCase
 
     public function test_get_wraps_redis_exception_in_circuit_infrastructure_exception(): void
     {
-        $failingClient = new class {
+        $failingClient = new class
+        {
             public function get(string $key): never
             {
                 throw new \RedisException('Connection to Redis failed');
@@ -142,7 +145,7 @@ final class RedisCircuitStoreTest extends TestCase
 
         $store = new RedisCircuitStore($failingClient, 'test_circuit:');
 
-        $this->expectException(\AhmedNour\CircuitBreaker\Domain\Exceptions\CircuitInfrastructureException::class);
+        $this->expectException(CircuitInfrastructureException::class);
         $this->expectExceptionMessage("Circuit 'failing-provider' infrastructure failure.");
 
         $store->get('failing-provider');
@@ -150,7 +153,8 @@ final class RedisCircuitStoreTest extends TestCase
 
     public function test_save_wraps_redis_exception_in_circuit_infrastructure_exception(): void
     {
-        $failingClient = new class {
+        $failingClient = new class
+        {
             public function set(string $key, string $value): never
             {
                 throw new \RedisException('Write error: Redis cluster node is unavailable');
@@ -160,10 +164,9 @@ final class RedisCircuitStoreTest extends TestCase
         $store = new RedisCircuitStore($failingClient, 'test_circuit:');
         $circuit = new Circuit('failing-provider');
 
-        $this->expectException(\AhmedNour\CircuitBreaker\Domain\Exceptions\CircuitInfrastructureException::class);
+        $this->expectException(CircuitInfrastructureException::class);
         $this->expectExceptionMessage("Circuit 'failing-provider' infrastructure failure.");
 
         $store->save($circuit);
     }
 }
-

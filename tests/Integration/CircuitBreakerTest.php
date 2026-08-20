@@ -17,28 +17,34 @@ use AhmedNour\CircuitBreaker\Domain\StateMachine\OpenStateHandler;
 use AhmedNour\CircuitBreaker\Infrastructure\Failure\HttpFailureClassifier;
 use AhmedNour\CircuitBreaker\Infrastructure\Lock\RedisCircuitLock;
 use AhmedNour\CircuitBreaker\Infrastructure\Persistence\RedisCircuitStore;
+use AhmedNour\CircuitBreaker\Tests\Support\FakeClock;
 use DateTimeImmutable;
 use DateTimeZone;
 use PHPUnit\Framework\TestCase;
 use Redis;
 use RuntimeException;
-use AhmedNour\CircuitBreaker\Tests\Support\FakeClock;
 
 final class CircuitBreakerTest extends TestCase
 {
     private Redis $redis;
+
     private RedisCircuitStore $store;
+
     private RedisCircuitLock $lock;
+
     private FakeClock $clock;
+
     private HttpFailureClassifier $classifier;
+
     private CircuitPolicyResolver $policyResolver;
+
     private CircuitBreaker $circuitBreaker;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->redis = new Redis();
+        $this->redis = new Redis;
         $host = (string) (getenv('REDIS_HOST') ?: '127.0.0.1');
         $port = (int) (getenv('REDIS_PORT') ?: 6379);
 
@@ -54,7 +60,7 @@ final class CircuitBreakerTest extends TestCase
         $this->store = new RedisCircuitStore($this->redis, 'integration_circuit:');
         $this->lock = new RedisCircuitLock($this->redis, 'integration_circuit:', ':probe-lock');
         $this->clock = new FakeClock(new DateTimeImmutable('2026-08-17 12:00:00', new DateTimeZone('UTC')));
-        $this->classifier = new HttpFailureClassifier();
+        $this->classifier = new HttpFailureClassifier;
 
         $this->policyResolver = new CircuitPolicyResolver(
             providers: [
@@ -87,7 +93,7 @@ final class CircuitBreakerTest extends TestCase
     protected function tearDown(): void
     {
         $keys = $this->redis->keys('integration_circuit:*');
-        if (!empty($keys)) {
+        if (! empty($keys)) {
             $this->redis->del($keys);
         }
 
@@ -115,7 +121,8 @@ final class CircuitBreakerTest extends TestCase
         // 1. First failure
         try {
             $this->circuitBreaker->execute($providerName, fn () => throw new RuntimeException('Connection timed out'));
-        } catch (\Throwable) {}
+        } catch (\Throwable) {
+        }
 
         $circuit = $this->store->get($providerName);
         $this->assertSame(CircuitState::Closed, $circuit->state);
@@ -124,7 +131,8 @@ final class CircuitBreakerTest extends TestCase
         // 2. Second failure
         try {
             $this->circuitBreaker->execute($providerName, fn () => throw new RuntimeException('503 Service Unavailable'));
-        } catch (\Throwable) {}
+        } catch (\Throwable) {
+        }
 
         $circuit = $this->store->get($providerName);
         $this->assertSame(CircuitState::Closed, $circuit->state);
@@ -133,7 +141,8 @@ final class CircuitBreakerTest extends TestCase
         // 3. Third failure -> TRIPS CIRCUIT OPEN
         try {
             $this->circuitBreaker->execute($providerName, fn () => throw new RuntimeException('Connection refused'));
-        } catch (\Throwable) {}
+        } catch (\Throwable) {
+        }
 
         $circuit = $this->store->get($providerName);
         $this->assertSame(CircuitState::Open, $circuit->state);
@@ -146,6 +155,7 @@ final class CircuitBreakerTest extends TestCase
         try {
             $this->circuitBreaker->execute($providerName, function () use (&$invoked) {
                 $invoked = true;
+
                 return 'never-reached';
             });
             $this->fail('Expected CircuitOpenException');
@@ -161,6 +171,7 @@ final class CircuitBreakerTest extends TestCase
         $probeInvoked = false;
         $result = $this->circuitBreaker->execute($providerName, function () use (&$probeInvoked) {
             $probeInvoked = true;
+
             return 'probe-ok';
         });
 
@@ -181,7 +192,8 @@ final class CircuitBreakerTest extends TestCase
         for ($i = 0; $i < 3; $i++) {
             try {
                 $this->circuitBreaker->execute($providerName, fn () => throw new RuntimeException('cURL error 28: Operation timeout'));
-            } catch (\Throwable) {}
+            } catch (\Throwable) {
+            }
         }
 
         $circuit = $this->store->get($providerName);
@@ -193,7 +205,8 @@ final class CircuitBreakerTest extends TestCase
         // Probe fails with 500 error
         try {
             $this->circuitBreaker->execute($providerName, fn () => throw new RuntimeException('500 Internal Server Error'));
-        } catch (\Throwable) {}
+        } catch (\Throwable) {
+        }
 
         // Circuit must be re-opened until 12:02:05 (65 + 60 = 125s)
         $reopenedCircuit = $this->store->get($providerName);
@@ -210,7 +223,8 @@ final class CircuitBreakerTest extends TestCase
         for ($i = 0; $i < 3; $i++) {
             try {
                 $this->circuitBreaker->execute($providerName, fn () => throw new RuntimeException('Timeout'));
-            } catch (\Throwable) {}
+            } catch (\Throwable) {
+            }
         }
 
         // Advance clock past recovery timeout
@@ -228,6 +242,7 @@ final class CircuitBreakerTest extends TestCase
         try {
             $this->circuitBreaker->execute($providerName, function () use (&$invoked) {
                 $invoked = true;
+
                 return 'probe';
             });
         } finally {

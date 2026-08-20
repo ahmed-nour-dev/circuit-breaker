@@ -16,7 +16,7 @@ final class FakeLock implements CircuitLock
 
     public function acquire(string $circuit, int $seconds): ?LockHandle
     {
-        if ($this->shouldFailAcquire || !empty($this->locked[$circuit])) {
+        if ($this->shouldFailAcquire || ! empty($this->locked[$circuit])) {
             return null;
         }
 
@@ -34,6 +34,6 @@ final class FakeLock implements CircuitLock
 
     public function isLocked(string $circuit): bool
     {
-        return !empty($this->locked[$circuit]);
+        return ! empty($this->locked[$circuit]);
     }
 }

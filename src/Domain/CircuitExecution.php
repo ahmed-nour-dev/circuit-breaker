@@ -10,6 +10,5 @@ final readonly class CircuitExecution
         public Circuit $circuit,
         public CircuitPolicy $policy,
         public \Closure $callback,
-    ) {
-    }
+    ) {}
 }

@@ -23,8 +23,7 @@ LUA;
         private readonly mixed $redis,
         private readonly string $key,
         private readonly string $token,
-    ) {
-    }
+    ) {}
 
     public function release(): void
     {

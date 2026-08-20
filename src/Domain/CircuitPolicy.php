@@ -10,6 +10,5 @@ final readonly class CircuitPolicy
         public int $failureThreshold,
         public int $recoveryTimeout,
         public int $halfOpenLockTimeout = 10,
-    ) {
-    }
+    ) {}
 }

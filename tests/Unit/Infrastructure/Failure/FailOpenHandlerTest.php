@@ -16,7 +16,7 @@ final class FailOpenHandlerTest extends TestCase
 {
     public function test_executes_callback_and_returns_result(): void
     {
-        $handler = new FailOpenHandler();
+        $handler = new FailOpenHandler;
 
         $execution = new CircuitExecution(
             circuit: new Circuit('twilio-sms'),
@@ -34,7 +34,7 @@ final class FailOpenHandlerTest extends TestCase
 
     public function test_propagates_callback_exception_if_callback_fails(): void
     {
-        $handler = new FailOpenHandler();
+        $handler = new FailOpenHandler;
 
         $execution = new CircuitExecution(
             circuit: new Circuit('twilio-sms'),

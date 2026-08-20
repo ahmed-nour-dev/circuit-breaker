@@ -25,8 +25,7 @@ final class RedisConnectionFactory
         private readonly float $timeout = 2.0,
         private readonly ?string $password = null,
         private readonly int $database = 0,
-    ) {
-    }
+    ) {}
 
     /**
      * Get a healthy Redis connection, reconnecting if the previous one is stale.
@@ -60,7 +59,7 @@ final class RedisConnectionFactory
 
     private function createConnection(): Redis
     {
-        $redis = new Redis();
+        $redis = new Redis;
         $redis->connect($this->host, $this->port, $this->timeout);
 
         if ($this->password !== null && $this->password !== '') {

@@ -11,8 +11,7 @@ final class Circuit
         public CircuitState $state = CircuitState::Closed,
         public int $failures = 0,
         public ?\DateTimeImmutable $openedUntil = null,
-    ) {
-    }
+    ) {}
 
     public function close(): void
     {

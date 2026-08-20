@@ -10,12 +10,11 @@ use LogicException;
 final class CircuitStateMachine
 {
     /**
-     * @param iterable<CircuitStateHandler> $handlers
+     * @param  iterable<CircuitStateHandler>  $handlers
      */
     public function __construct(
         private readonly iterable $handlers,
-    ) {
-    }
+    ) {}
 
     public function execute(CircuitExecution $execution): mixed
     {

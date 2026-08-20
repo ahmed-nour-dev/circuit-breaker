@@ -17,9 +17,12 @@ final class FallbackHandlerTest extends TestCase
 {
     public function test_delegates_to_infrastructure_fallback(): void
     {
-        $fallback = new class implements InfrastructureFallback {
+        $fallback = new class implements InfrastructureFallback
+        {
             public bool $invoked = false;
+
             public ?CircuitExecution $receivedExecution = null;
+
             public ?Throwable $receivedException = null;
 
             public function execute(CircuitExecution $execution, Throwable $exception): mixed

@@ -10,29 +10,32 @@ use AhmedNour\CircuitBreaker\Domain\CircuitPolicy;
 use AhmedNour\CircuitBreaker\Domain\CircuitState;
 use AhmedNour\CircuitBreaker\Domain\Exceptions\CircuitBusyException;
 use AhmedNour\CircuitBreaker\Domain\StateMachine\HalfOpenStateHandler;
-use DateTimeImmutable;
-use DateTimeZone;
-use PHPUnit\Framework\TestCase;
-use RuntimeException;
 use AhmedNour\CircuitBreaker\Tests\Support\AlwaysTripFailureClassifier;
 use AhmedNour\CircuitBreaker\Tests\Support\FakeClock;
 use AhmedNour\CircuitBreaker\Tests\Support\FakeLock;
 use AhmedNour\CircuitBreaker\Tests\Support\InMemoryCircuitStore;
 use AhmedNour\CircuitBreaker\Tests\Support\NeverTripFailureClassifier;
+use DateTimeImmutable;
+use DateTimeZone;
+use PHPUnit\Framework\TestCase;
+use RuntimeException;
 
 final class HalfOpenStateHandlerTest extends TestCase
 {
     private InMemoryCircuitStore $store;
+
     private FakeClock $clock;
+
     private FakeLock $lock;
+
     private CircuitPolicy $policy;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->store = new InMemoryCircuitStore();
+        $this->store = new InMemoryCircuitStore;
         $this->clock = new FakeClock(new DateTimeImmutable('2026-08-17 12:00:00', new DateTimeZone('UTC')));
-        $this->lock = new FakeLock();
+        $this->lock = new FakeLock;
         $this->policy = new CircuitPolicy(
             failureThreshold: 3,
             recoveryTimeout: 60,
@@ -45,7 +48,7 @@ final class HalfOpenStateHandlerTest extends TestCase
         $handler = new HalfOpenStateHandler(
             lock: $this->lock,
             store: $this->store,
-            failureClassifier: new AlwaysTripFailureClassifier(),
+            failureClassifier: new AlwaysTripFailureClassifier,
             clock: $this->clock,
         );
 
@@ -65,7 +68,7 @@ final class HalfOpenStateHandlerTest extends TestCase
         $handler = new HalfOpenStateHandler(
             lock: $this->lock,
             store: $this->store,
-            failureClassifier: new AlwaysTripFailureClassifier(),
+            failureClassifier: new AlwaysTripFailureClassifier,
             clock: $this->clock,
         );
 
@@ -75,6 +78,7 @@ final class HalfOpenStateHandlerTest extends TestCase
             policy: $this->policy,
             callback: function () use (&$executed) {
                 $executed = true;
+
                 return 'probe-result';
             },
         );
@@ -97,7 +101,7 @@ final class HalfOpenStateHandlerTest extends TestCase
         $handler = new HalfOpenStateHandler(
             lock: $this->lock,
             store: $this->store,
-            failureClassifier: new AlwaysTripFailureClassifier(),
+            failureClassifier: new AlwaysTripFailureClassifier,
             clock: $this->clock,
         );
 
@@ -130,7 +134,7 @@ final class HalfOpenStateHandlerTest extends TestCase
         $handler = new HalfOpenStateHandler(
             lock: $this->lock,
             store: $this->store,
-            failureClassifier: new AlwaysTripFailureClassifier(),
+            failureClassifier: new AlwaysTripFailureClassifier,
             clock: $this->clock,
         );
 
@@ -167,7 +171,7 @@ final class HalfOpenStateHandlerTest extends TestCase
         $handler = new HalfOpenStateHandler(
             lock: $this->lock,
             store: $this->store,
-            failureClassifier: new NeverTripFailureClassifier(),
+            failureClassifier: new NeverTripFailureClassifier,
             clock: $this->clock,
         );
 

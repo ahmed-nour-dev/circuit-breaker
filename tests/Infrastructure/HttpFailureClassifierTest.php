@@ -23,7 +23,7 @@ final class HttpFailureClassifierTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->classifier = new HttpFailureClassifier();
+        $this->classifier = new HttpFailureClassifier;
     }
 
     public function test_trips_on_guzzle_connect_exception(): void
@@ -87,10 +87,6 @@ final class HttpFailureClassifierTest extends TestCase
     }
 }
 
-final class CustomProviderException extends RuntimeException
-{
-}
+final class CustomProviderException extends RuntimeException {}
 
-final class IgnoreMeException extends RuntimeException
-{
-}
+final class IgnoreMeException extends RuntimeException {}

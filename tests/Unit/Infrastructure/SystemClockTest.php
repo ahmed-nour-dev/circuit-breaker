@@ -13,7 +13,7 @@ final class SystemClockTest extends TestCase
 {
     public function test_system_clock_returns_current_time_in_utc_by_default(): void
     {
-        $clock = new SystemClock();
+        $clock = new SystemClock;
         $now = $clock->now();
 
         $this->assertInstanceOf(DateTimeImmutable::class, $now);
