@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit\Infrastructure\Failure;
+namespace AhmedNour\CircuitBreaker\Tests\Unit\Infrastructure\Failure;
 
-use App\Modules\CircuitBreaker\Domain\Circuit;
-use App\Modules\CircuitBreaker\Domain\CircuitExecution;
-use App\Modules\CircuitBreaker\Domain\CircuitPolicy;
-use App\Modules\CircuitBreaker\Domain\Contracts\InfrastructureFallback;
-use App\Modules\CircuitBreaker\Domain\Exceptions\CircuitInfrastructureException;
-use App\Modules\CircuitBreaker\Infrastructure\Failure\FallbackHandler;
+use AhmedNour\CircuitBreaker\Domain\Circuit;
+use AhmedNour\CircuitBreaker\Domain\CircuitExecution;
+use AhmedNour\CircuitBreaker\Domain\CircuitPolicy;
+use AhmedNour\CircuitBreaker\Domain\Contracts\InfrastructureFallback;
+use AhmedNour\CircuitBreaker\Domain\Exceptions\CircuitInfrastructureException;
+use AhmedNour\CircuitBreaker\Infrastructure\Failure\FallbackHandler;
 use PHPUnit\Framework\TestCase;
 use Throwable;
 

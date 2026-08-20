@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit\Infrastructure;
+namespace AhmedNour\CircuitBreaker\Tests\Unit\Infrastructure;
 
-use App\Modules\CircuitBreaker\Infrastructure\Time\SystemClock;
+use AhmedNour\CircuitBreaker\Infrastructure\Time\SystemClock;
 use DateTimeImmutable;
 use DateTimeZone;
 use PHPUnit\Framework\TestCase;

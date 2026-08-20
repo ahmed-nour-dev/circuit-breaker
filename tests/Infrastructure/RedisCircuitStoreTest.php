@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Tests\Infrastructure;
+namespace AhmedNour\CircuitBreaker\Tests\Infrastructure;
 
-use App\Modules\CircuitBreaker\Domain\Circuit;
-use App\Modules\CircuitBreaker\Domain\CircuitState;
-use App\Modules\CircuitBreaker\Infrastructure\Persistence\RedisCircuitStore;
+use AhmedNour\CircuitBreaker\Domain\Circuit;
+use AhmedNour\CircuitBreaker\Domain\CircuitState;
+use AhmedNour\CircuitBreaker\Infrastructure\Persistence\RedisCircuitStore;
 use DateTimeImmutable;
 use DateTimeZone;
 use PHPUnit\Framework\TestCase;
@@ -142,7 +142,7 @@ final class RedisCircuitStoreTest extends TestCase
 
         $store = new RedisCircuitStore($failingClient, 'test_circuit:');
 
-        $this->expectException(\App\Modules\CircuitBreaker\Domain\Exceptions\CircuitInfrastructureException::class);
+        $this->expectException(\AhmedNour\CircuitBreaker\Domain\Exceptions\CircuitInfrastructureException::class);
         $this->expectExceptionMessage("Circuit 'failing-provider' infrastructure failure.");
 
         $store->get('failing-provider');
@@ -160,7 +160,7 @@ final class RedisCircuitStoreTest extends TestCase
         $store = new RedisCircuitStore($failingClient, 'test_circuit:');
         $circuit = new Circuit('failing-provider');
 
-        $this->expectException(\App\Modules\CircuitBreaker\Domain\Exceptions\CircuitInfrastructureException::class);
+        $this->expectException(\AhmedNour\CircuitBreaker\Domain\Exceptions\CircuitInfrastructureException::class);
         $this->expectExceptionMessage("Circuit 'failing-provider' infrastructure failure.");
 
         $store->save($circuit);

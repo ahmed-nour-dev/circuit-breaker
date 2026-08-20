@@ -2,27 +2,27 @@
 
 declare(strict_types=1);
 
-namespace Tests\Integration;
+namespace AhmedNour\CircuitBreaker\Tests\Integration;
 
-use App\Modules\CircuitBreaker\Application\CircuitBreaker;
-use App\Modules\CircuitBreaker\Application\CircuitPolicyResolver;
-use App\Modules\CircuitBreaker\Domain\CircuitPolicy;
-use App\Modules\CircuitBreaker\Domain\CircuitState;
-use App\Modules\CircuitBreaker\Domain\Exceptions\CircuitBusyException;
-use App\Modules\CircuitBreaker\Domain\Exceptions\CircuitOpenException;
-use App\Modules\CircuitBreaker\Domain\StateMachine\CircuitStateMachine;
-use App\Modules\CircuitBreaker\Domain\StateMachine\ClosedStateHandler;
-use App\Modules\CircuitBreaker\Domain\StateMachine\HalfOpenStateHandler;
-use App\Modules\CircuitBreaker\Domain\StateMachine\OpenStateHandler;
-use App\Modules\CircuitBreaker\Infrastructure\Failure\HttpFailureClassifier;
-use App\Modules\CircuitBreaker\Infrastructure\Lock\RedisCircuitLock;
-use App\Modules\CircuitBreaker\Infrastructure\Persistence\RedisCircuitStore;
+use AhmedNour\CircuitBreaker\Application\CircuitBreaker;
+use AhmedNour\CircuitBreaker\Application\CircuitPolicyResolver;
+use AhmedNour\CircuitBreaker\Domain\CircuitPolicy;
+use AhmedNour\CircuitBreaker\Domain\CircuitState;
+use AhmedNour\CircuitBreaker\Domain\Exceptions\CircuitBusyException;
+use AhmedNour\CircuitBreaker\Domain\Exceptions\CircuitOpenException;
+use AhmedNour\CircuitBreaker\Domain\StateMachine\CircuitStateMachine;
+use AhmedNour\CircuitBreaker\Domain\StateMachine\ClosedStateHandler;
+use AhmedNour\CircuitBreaker\Domain\StateMachine\HalfOpenStateHandler;
+use AhmedNour\CircuitBreaker\Domain\StateMachine\OpenStateHandler;
+use AhmedNour\CircuitBreaker\Infrastructure\Failure\HttpFailureClassifier;
+use AhmedNour\CircuitBreaker\Infrastructure\Lock\RedisCircuitLock;
+use AhmedNour\CircuitBreaker\Infrastructure\Persistence\RedisCircuitStore;
 use DateTimeImmutable;
 use DateTimeZone;
 use PHPUnit\Framework\TestCase;
 use Redis;
 use RuntimeException;
-use Tests\Support\FakeClock;
+use AhmedNour\CircuitBreaker\Tests\Support\FakeClock;
 
 final class CircuitBreakerTest extends TestCase
 {

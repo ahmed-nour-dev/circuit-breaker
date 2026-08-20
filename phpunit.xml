@@ -20,7 +20,7 @@
     </testsuites>
     <source>
         <include>
-            <directory>app/Modules/CircuitBreaker</directory>
+            <directory>src</directory>
         </include>
     </source>
     <php>

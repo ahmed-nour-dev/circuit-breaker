@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Tests\Infrastructure;
+namespace AhmedNour\CircuitBreaker\Tests\Infrastructure;
 
-use App\Modules\CircuitBreaker\Infrastructure\Lock\RedisCircuitLock;
-use App\Modules\CircuitBreaker\Infrastructure\Lock\RedisLockHandle;
+use AhmedNour\CircuitBreaker\Infrastructure\Lock\RedisCircuitLock;
+use AhmedNour\CircuitBreaker\Infrastructure\Lock\RedisLockHandle;
 use PHPUnit\Framework\TestCase;
 use Redis;
 
@@ -115,7 +115,7 @@ final class RedisCircuitLockTest extends TestCase
 
         $lock = new RedisCircuitLock($failingClient, 'test_lock:', ':probe-lock');
 
-        $this->expectException(\App\Modules\CircuitBreaker\Domain\Exceptions\CircuitInfrastructureException::class);
+        $this->expectException(\AhmedNour\CircuitBreaker\Domain\Exceptions\CircuitInfrastructureException::class);
         $this->expectExceptionMessage("Circuit 'failing-circuit' infrastructure failure.");
 
         $lock->acquire('failing-circuit', 5);

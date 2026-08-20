@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit\Application;
+namespace AhmedNour\CircuitBreaker\Tests\Unit\Application;
 
-use App\Modules\CircuitBreaker\Application\CircuitPolicyResolver;
-use App\Modules\CircuitBreaker\Domain\CircuitPolicy;
+use AhmedNour\CircuitBreaker\Application\CircuitPolicyResolver;
+use AhmedNour\CircuitBreaker\Domain\CircuitPolicy;
 use PHPUnit\Framework\TestCase;
 
 final class CircuitPolicyResolverTest extends TestCase

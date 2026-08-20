@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Tests\Support;
+namespace AhmedNour\CircuitBreaker\Tests\Support;
 
-use App\Modules\CircuitBreaker\Domain\Contracts\LockHandle;
+use AhmedNour\CircuitBreaker\Domain\Contracts\LockHandle;
 use Closure;
 
 final class FakeLockHandle implements LockHandle

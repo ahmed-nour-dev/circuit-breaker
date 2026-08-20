@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Tests\Infrastructure;
+namespace AhmedNour\CircuitBreaker\Tests\Infrastructure;
 
-use App\Modules\CircuitBreaker\Infrastructure\Failure\HttpFailureClassifier;
+use AhmedNour\CircuitBreaker\Infrastructure\Failure\HttpFailureClassifier;
 use Error;
 use Exception;
 use GuzzleHttp\Exception\ConnectException;

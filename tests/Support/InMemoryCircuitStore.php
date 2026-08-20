@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Tests\Support;
+namespace AhmedNour\CircuitBreaker\Tests\Support;
 
-use App\Modules\CircuitBreaker\Domain\Circuit;
-use App\Modules\CircuitBreaker\Domain\CircuitState;
-use App\Modules\CircuitBreaker\Domain\Contracts\CircuitStore;
+use AhmedNour\CircuitBreaker\Domain\Circuit;
+use AhmedNour\CircuitBreaker\Domain\CircuitState;
+use AhmedNour\CircuitBreaker\Domain\Contracts\CircuitStore;
 
 final class InMemoryCircuitStore implements CircuitStore
 {

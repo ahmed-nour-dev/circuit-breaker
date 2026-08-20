@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Tests\Support;
+namespace AhmedNour\CircuitBreaker\Tests\Support;
 
-use App\Modules\CircuitBreaker\Domain\Contracts\FailureClassifier;
+use AhmedNour\CircuitBreaker\Domain\Contracts\FailureClassifier;
 use Throwable;
 
 final class NeverTripFailureClassifier implements FailureClassifier

@@ -2,37 +2,37 @@
 
 declare(strict_types=1);
 
-namespace Tests\Integration;
+namespace AhmedNour\CircuitBreaker\Tests\Integration;
 
-use App\Modules\CircuitBreaker\Application\CircuitBreaker;
-use App\Modules\CircuitBreaker\Application\CircuitPolicyResolver;
-use App\Modules\CircuitBreaker\Domain\Circuit;
-use App\Modules\CircuitBreaker\Domain\CircuitExecution;
-use App\Modules\CircuitBreaker\Domain\CircuitPolicy;
-use App\Modules\CircuitBreaker\Domain\CircuitState;
-use App\Modules\CircuitBreaker\Domain\Contracts\CircuitLock;
-use App\Modules\CircuitBreaker\Domain\Contracts\CircuitStore;
-use App\Modules\CircuitBreaker\Domain\Contracts\InfrastructureFallback;
-use App\Modules\CircuitBreaker\Domain\Exceptions\CircuitBusyException;
-use App\Modules\CircuitBreaker\Domain\Exceptions\CircuitInfrastructureException;
-use App\Modules\CircuitBreaker\Domain\StateMachine\CircuitStateMachine;
-use App\Modules\CircuitBreaker\Domain\StateMachine\ClosedStateHandler;
-use App\Modules\CircuitBreaker\Domain\StateMachine\HalfOpenStateHandler;
-use App\Modules\CircuitBreaker\Domain\StateMachine\OpenStateHandler;
-use App\Modules\CircuitBreaker\Infrastructure\Failure\FailClosedHandler;
-use App\Modules\CircuitBreaker\Infrastructure\Failure\FailOpenHandler;
-use App\Modules\CircuitBreaker\Infrastructure\Failure\FallbackHandler;
-use App\Modules\CircuitBreaker\Infrastructure\Failure\HttpFailureClassifier;
-use App\Modules\CircuitBreaker\Infrastructure\Lock\RedisCircuitLock;
-use App\Modules\CircuitBreaker\Infrastructure\Persistence\RedisCircuitStore;
+use AhmedNour\CircuitBreaker\Application\CircuitBreaker;
+use AhmedNour\CircuitBreaker\Application\CircuitPolicyResolver;
+use AhmedNour\CircuitBreaker\Domain\Circuit;
+use AhmedNour\CircuitBreaker\Domain\CircuitExecution;
+use AhmedNour\CircuitBreaker\Domain\CircuitPolicy;
+use AhmedNour\CircuitBreaker\Domain\CircuitState;
+use AhmedNour\CircuitBreaker\Domain\Contracts\CircuitLock;
+use AhmedNour\CircuitBreaker\Domain\Contracts\CircuitStore;
+use AhmedNour\CircuitBreaker\Domain\Contracts\InfrastructureFallback;
+use AhmedNour\CircuitBreaker\Domain\Exceptions\CircuitBusyException;
+use AhmedNour\CircuitBreaker\Domain\Exceptions\CircuitInfrastructureException;
+use AhmedNour\CircuitBreaker\Domain\StateMachine\CircuitStateMachine;
+use AhmedNour\CircuitBreaker\Domain\StateMachine\ClosedStateHandler;
+use AhmedNour\CircuitBreaker\Domain\StateMachine\HalfOpenStateHandler;
+use AhmedNour\CircuitBreaker\Domain\StateMachine\OpenStateHandler;
+use AhmedNour\CircuitBreaker\Infrastructure\Failure\FailClosedHandler;
+use AhmedNour\CircuitBreaker\Infrastructure\Failure\FailOpenHandler;
+use AhmedNour\CircuitBreaker\Infrastructure\Failure\FallbackHandler;
+use AhmedNour\CircuitBreaker\Infrastructure\Failure\HttpFailureClassifier;
+use AhmedNour\CircuitBreaker\Infrastructure\Lock\RedisCircuitLock;
+use AhmedNour\CircuitBreaker\Infrastructure\Persistence\RedisCircuitStore;
 use DateTimeImmutable;
 use DateTimeZone;
 use PHPUnit\Framework\TestCase;
 use Redis;
 use RedisException;
-use Tests\Support\FakeClock;
-use Tests\Support\FakeLock;
-use Tests\Support\InMemoryCircuitStore;
+use AhmedNour\CircuitBreaker\Tests\Support\FakeClock;
+use AhmedNour\CircuitBreaker\Tests\Support\FakeLock;
+use AhmedNour\CircuitBreaker\Tests\Support\InMemoryCircuitStore;
 use Throwable;
 
 final class CircuitBreakerInfrastructureFailureIntegrationTest extends TestCase
@@ -196,7 +196,7 @@ final class CircuitBreakerInfrastructureFailureIntegrationTest extends TestCase
         $fakeLock->setShouldFailAcquire(true); // Lock already held by another worker
 
         $handlerInvoked = false;
-        $customFailureHandler = new class ($handlerInvoked) implements \App\Modules\CircuitBreaker\Domain\Contracts\InfrastructureFailureHandler {
+        $customFailureHandler = new class ($handlerInvoked) implements \AhmedNour\CircuitBreaker\Domain\Contracts\InfrastructureFailureHandler {
             public function __construct(public bool &$invoked) {}
             public function handle(Throwable $exception, CircuitExecution $execution): mixed
             {

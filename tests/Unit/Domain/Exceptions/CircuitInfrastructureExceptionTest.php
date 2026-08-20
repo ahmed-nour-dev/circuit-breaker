@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit\Domain\Exceptions;
+namespace AhmedNour\CircuitBreaker\Tests\Unit\Domain\Exceptions;
 
-use App\Modules\CircuitBreaker\Domain\Exceptions\CircuitInfrastructureException;
+use AhmedNour\CircuitBreaker\Domain\Exceptions\CircuitInfrastructureException;
 use Exception;
 use PHPUnit\Framework\TestCase;
 

@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit\Domain;
+namespace AhmedNour\CircuitBreaker\Tests\Unit\Domain;
 
-use App\Modules\CircuitBreaker\Domain\Circuit;
-use App\Modules\CircuitBreaker\Domain\CircuitExecution;
-use App\Modules\CircuitBreaker\Domain\CircuitPolicy;
-use App\Modules\CircuitBreaker\Domain\CircuitState;
-use App\Modules\CircuitBreaker\Domain\StateMachine\CircuitStateHandler;
-use App\Modules\CircuitBreaker\Domain\StateMachine\CircuitStateMachine;
+use AhmedNour\CircuitBreaker\Domain\Circuit;
+use AhmedNour\CircuitBreaker\Domain\CircuitExecution;
+use AhmedNour\CircuitBreaker\Domain\CircuitPolicy;
+use AhmedNour\CircuitBreaker\Domain\CircuitState;
+use AhmedNour\CircuitBreaker\Domain\StateMachine\CircuitStateHandler;
+use AhmedNour\CircuitBreaker\Domain\StateMachine\CircuitStateMachine;
 use LogicException;
 use PHPUnit\Framework\TestCase;
 

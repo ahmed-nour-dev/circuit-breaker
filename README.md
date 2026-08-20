@@ -1,5 +1,9 @@
 # Distributed Circuit Breaker for PHP & Laravel
 
+[![Tests](https://github.com/ahmed-nour-dev/circuit-breaker/actions/workflows/tests.yml/badge.svg)](https://github.com/ahmed-nour-dev/circuit-breaker/actions/workflows/tests.yml)
+[![Latest Version](https://img.shields.io/packagist/v/ahmednour/circuit-breaker.svg)](https://packagist.org/packages/ahmednour/circuit-breaker)
+[![License](https://img.shields.io/packagist/l/ahmednour/circuit-breaker.svg)](LICENSE)
+
 A production-ready, high-performance distributed Circuit Breaker package for PHP 8.2+ and Laravel. Built with clean architecture principles to protect your applications from cascading failures when third-party APIs (SMS gateways, payment processors, CRMs, email providers, etc.) become degraded or unavailable.
 
 ---
@@ -51,7 +55,7 @@ A resilient circuit breaker must distinguish between four completely different f
 ## Installation
 
 ```bash
-composer require ahmednour1430464/circuit-breaker
+composer require ahmednour/circuit-breaker
 ```
 
 ### Laravel Service Provider
@@ -61,7 +65,7 @@ If package auto-discovery is enabled, `CircuitBreakerServiceProvider` is loaded 
 ```php
 'providers' => [
     // ...
-    App\Modules\CircuitBreaker\Providers\CircuitBreakerServiceProvider::class,
+    AhmedNour\CircuitBreaker\Providers\CircuitBreakerServiceProvider::class,
 ],
 ```
 
@@ -151,9 +155,9 @@ Wrap any external service call in the `execute` method:
 ```php
 namespace App\Services;
 
-use App\Modules\CircuitBreaker\Application\CircuitBreaker;
-use App\Modules\CircuitBreaker\Domain\Exceptions\CircuitOpenException;
-use App\Modules\CircuitBreaker\Domain\Exceptions\CircuitBusyException;
+use AhmedNour\CircuitBreaker\Application\CircuitBreaker;
+use AhmedNour\CircuitBreaker\Domain\Exceptions\CircuitOpenException;
+use AhmedNour\CircuitBreaker\Domain\Exceptions\CircuitBusyException;
 
 class SmsService
 {
@@ -192,9 +196,9 @@ Handle circuit open or busy states cleanly in queue jobs with automatic delay re
 ```php
 namespace App\Jobs;
 
-use App\Modules\CircuitBreaker\Application\CircuitBreaker;
-use App\Modules\CircuitBreaker\Domain\Exceptions\CircuitBusyException;
-use App\Modules\CircuitBreaker\Domain\Exceptions\CircuitOpenException;
+use AhmedNour\CircuitBreaker\Application\CircuitBreaker;
+use AhmedNour\CircuitBreaker\Domain\Exceptions\CircuitBusyException;
+use AhmedNour\CircuitBreaker\Domain\Exceptions\CircuitOpenException;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -253,8 +257,8 @@ Redis DOWN ──► FailClosedHandler ──► Throws CircuitInfrastructureExc
 Delegates to an implementation of `InfrastructureFallback` (e.g. database-backed store or in-memory fallback).
 
 ```php
-use App\Modules\CircuitBreaker\Domain\CircuitExecution;
-use App\Modules\CircuitBreaker\Domain\Contracts\InfrastructureFallback;
+use AhmedNour\CircuitBreaker\Domain\CircuitExecution;
+use AhmedNour\CircuitBreaker\Domain\Contracts\InfrastructureFallback;
 use Throwable;
 
 class DatabaseCircuitFallback implements InfrastructureFallback

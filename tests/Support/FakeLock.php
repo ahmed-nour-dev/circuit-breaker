@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Tests\Support;
+namespace AhmedNour\CircuitBreaker\Tests\Support;
 
-use App\Modules\CircuitBreaker\Domain\Contracts\CircuitLock;
-use App\Modules\CircuitBreaker\Domain\Contracts\LockHandle;
+use AhmedNour\CircuitBreaker\Domain\Contracts\CircuitLock;
+use AhmedNour\CircuitBreaker\Domain\Contracts\LockHandle;
 
 final class FakeLock implements CircuitLock
 {

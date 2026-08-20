@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Tests\Infrastructure;
+namespace AhmedNour\CircuitBreaker\Tests\Infrastructure;
 
-use App\Modules\CircuitBreaker\Infrastructure\Redis\RedisConnectionFactory;
+use AhmedNour\CircuitBreaker\Infrastructure\Redis\RedisConnectionFactory;
 use PHPUnit\Framework\TestCase;
 use Redis;
 
