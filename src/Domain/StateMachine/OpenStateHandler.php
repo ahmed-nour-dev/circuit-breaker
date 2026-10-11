@@ -29,8 +29,17 @@ final class OpenStateHandler implements CircuitStateHandler
             throw new CircuitOpenException($execution->circuit->name);
         }
 
+        // Another worker may have moved the circuit on since we read it; only the one
+        // that wins the atomic open -> half-open transition gets to probe.
+        if (! $this->store->transitionToHalfOpen($execution->circuit->name, $this->clock->now())) {
+            $current = $this->store->get($execution->circuit->name);
+
+            if ($current->state !== CircuitState::HalfOpen) {
+                throw new CircuitOpenException($execution->circuit->name);
+            }
+        }
+
         $execution->circuit->halfOpen();
-        $this->store->save($execution->circuit);
 
         return $this->halfOpenHandler->execute($execution);
     }

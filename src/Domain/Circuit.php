@@ -13,6 +13,13 @@ final class Circuit
         public ?\DateTimeImmutable $openedUntil = null,
     ) {}
 
+    public function sync(self $other): void
+    {
+        $this->state = $other->state;
+        $this->failures = $other->failures;
+        $this->openedUntil = $other->openedUntil;
+    }
+
     public function close(): void
     {
         $this->state = CircuitState::Closed;
