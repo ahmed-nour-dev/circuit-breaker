@@ -163,7 +163,7 @@ final class HalfOpenStateHandlerTest extends TestCase
         }
     }
 
-    public function test_failed_probe_with_non_tripping_error_does_not_reopen_circuit_and_releases_lock(): void
+    public function test_probe_with_non_tripping_error_closes_circuit_rethrows_and_releases_lock(): void
     {
         $circuit = new Circuit('sms-service', CircuitState::HalfOpen, failures: 3);
         $this->store->save($circuit);
@@ -187,8 +187,10 @@ final class HalfOpenStateHandlerTest extends TestCase
         try {
             $handler->execute($execution);
         } finally {
-            // Did not reopen because it was classified as non-tripping
-            $this->assertSame(CircuitState::HalfOpen, $circuit->state);
+            // Non-tripping error proves the provider is reachable
+            $this->assertSame(CircuitState::Closed, $circuit->state);
+            $this->assertSame(0, $circuit->failures);
+            $this->assertSame(CircuitState::Closed, $this->store->get('sms-service')->state);
 
             // Lock must be released
             $this->assertFalse($this->lock->isLocked('sms-service'));
