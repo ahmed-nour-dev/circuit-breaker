@@ -41,7 +41,7 @@ final class CircuitPolicyResolverTest extends TestCase
 
         $this->assertSame(5, $policy->failureThreshold);
         $this->assertSame(60, $policy->recoveryTimeout);
-        $this->assertSame(60, $policy->halfOpenLockTimeout);
+        $this->assertSame(10, $policy->halfOpenLockTimeout);
     }
 
     public function test_falls_back_to_defaults_for_missing_keys_in_provider_config(): void
