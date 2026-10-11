@@ -26,7 +26,7 @@ A production-ready, high-performance distributed Circuit Breaker package for PHP
 stateDiagram-v2
     [*] --> Closed
     
-    Closed --> Open: Failure threshold reached\n(e.g., 5 consecutive 5xx/timeouts)
+    Closed --> Open: Failure threshold reached\n(e.g., 5 consecutive 5xx/timeouts,\nno success or 4xx in between)
     Closed --> Closed: Successful call / 4xx error (resets failure count)
     
     Open --> Open: Calls fail fast with CircuitOpenException\n(No external HTTP requests made)

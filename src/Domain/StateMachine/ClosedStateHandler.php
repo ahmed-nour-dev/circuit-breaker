@@ -31,6 +31,9 @@ final class ClosedStateHandler implements CircuitStateHandler
             $result = ($execution->callback)();
         } catch (Throwable $e) {
             if (! $this->failureClassifier->shouldTrip($e)) {
+                // The provider answered (e.g. a 4xx), so the failure streak is over.
+                $this->resetFailures($execution);
+
                 throw $e;
             }
 
@@ -49,13 +52,18 @@ final class ClosedStateHandler implements CircuitStateHandler
             throw $e;
         }
 
+        $this->resetFailures($execution);
+
+        return $result;
+    }
+
+    private function resetFailures(CircuitExecution $execution): void
+    {
         // Nothing to reset on a healthy circuit, so skip the Redis write.
         if ($execution->circuit->failures > 0) {
             $this->bestEffort(fn () => $this->store->recordSuccess($execution->circuit->name));
             $execution->circuit->close();
         }
-
-        return $result;
     }
 
     /**
