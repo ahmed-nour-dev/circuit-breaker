@@ -19,12 +19,15 @@ final class RedisConnectionFactory
 {
     private ?Redis $connection = null;
 
+    private float $lastUsedAt = 0.0;
+
     public function __construct(
         private readonly string $host = '127.0.0.1',
         private readonly int $port = 6379,
         private readonly float $timeout = 2.0,
         private readonly ?string $password = null,
         private readonly int $database = 0,
+        private readonly float $revalidateAfter = 5.0,
     ) {}
 
     /**
@@ -32,11 +35,19 @@ final class RedisConnectionFactory
      */
     public function connection(): Redis
     {
-        if ($this->connection !== null && $this->isAlive($this->connection)) {
+        $now = microtime(true);
+
+        // Only ping a connection that has been idle; a busy one is known to be
+        // alive, and a PING per call doubles the round trips on the hot path.
+        if ($this->connection !== null
+            && ($now - $this->lastUsedAt < $this->revalidateAfter || $this->isAlive($this->connection))) {
+            $this->lastUsedAt = $now;
+
             return $this->connection;
         }
 
         $this->connection = $this->createConnection();
+        $this->lastUsedAt = $now;
 
         return $this->connection;
     }
@@ -76,7 +87,9 @@ final class RedisConnectionFactory
     private function isAlive(Redis $redis): bool
     {
         try {
-            return $redis->ping() === true || $redis->ping() === '+PONG';
+            $reply = $redis->ping();
+
+            return $reply === true || $reply === '+PONG';
         } catch (Throwable) {
             return false;
         }

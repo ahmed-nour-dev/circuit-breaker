@@ -47,16 +47,6 @@ final class CircuitBreakerServiceProvider extends ServiceProvider
         // Under Octane, dead connections are detected via PING and transparently
         // reconnected. The disconnect() method is called on Octane flush events.
         $this->app->singleton(RedisConnectionFactory::class, function (Container $app): RedisConnectionFactory {
-            $config = $app->bound('config') ? $app->make('config') : null;
-
-            if ($app->bound('redis')) {
-                // When Laravel's Redis manager is available, we don't use
-                // RedisConnectionFactory — we go through Laravel's connection
-                // which is already Octane-aware when configured properly.
-                // This branch won't actually construct a factory; the store/lock
-                // closures below will detect this and use Laravel's connection.
-            }
-
             return new RedisConnectionFactory(
                 host: (string) (getenv('REDIS_HOST') ?: '127.0.0.1'),
                 port: (int) (getenv('REDIS_PORT') ?: 6379),
