@@ -46,14 +46,14 @@ final class HalfOpenStateHandler implements CircuitStateHandler
                 if ($this->failureClassifier->shouldTrip($e)) {
                     $until = $this->clock->now()->modify('+'.$execution->policy->recoveryTimeout.' seconds');
                     $execution->circuit->open($until);
-                    $this->saveBestEffort($execution);
+                    $this->bestEffort(fn () => $this->store->reopenFromHalfOpen($execution->circuit->name, $until));
                 }
 
                 throw $e;
             }
 
             $execution->circuit->close();
-            $this->saveBestEffort($execution);
+            $this->bestEffort(fn () => $this->store->closeFromHalfOpen($execution->circuit->name));
 
             return $result;
         } finally {
@@ -65,10 +65,10 @@ final class HalfOpenStateHandler implements CircuitStateHandler
      * The callback has already run, so a store failure must not surface: it would
      * make the breaker's infrastructure policy run the callback a second time.
      */
-    private function saveBestEffort(CircuitExecution $execution): void
+    private function bestEffort(callable $record): void
     {
         try {
-            $this->store->save($execution->circuit);
+            $record();
         } catch (CircuitInfrastructureException) {
             // Recording the outcome is best-effort once the callback has run.
         }

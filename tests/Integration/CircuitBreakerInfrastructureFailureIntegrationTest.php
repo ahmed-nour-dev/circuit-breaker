@@ -27,8 +27,10 @@ use AhmedNour\CircuitBreaker\Infrastructure\Failure\HttpFailureClassifier;
 use AhmedNour\CircuitBreaker\Tests\Support\FakeClock;
 use AhmedNour\CircuitBreaker\Tests\Support\FakeLock;
 use AhmedNour\CircuitBreaker\Tests\Support\InMemoryCircuitStore;
+use AhmedNour\CircuitBreaker\Tests\Support\UnusedStoreTransitions;
 use DateTimeImmutable;
 use DateTimeZone;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use RedisException;
 use Throwable;
@@ -78,6 +80,8 @@ final class CircuitBreakerInfrastructureFailureIntegrationTest extends TestCase
     {
         $failingStore = new class implements CircuitStore
         {
+            use UnusedStoreTransitions;
+
             public function get(string $name): Circuit
             {
                 throw new CircuitInfrastructureException(circuit: $name, previous: new RedisException('Redis connection refused'));
@@ -115,6 +119,8 @@ final class CircuitBreakerInfrastructureFailureIntegrationTest extends TestCase
     {
         $failingStore = new class implements CircuitStore
         {
+            use UnusedStoreTransitions;
+
             public function get(string $name): Circuit
             {
                 throw new CircuitInfrastructureException(circuit: $name, previous: new RedisException('Cluster down'));
@@ -157,6 +163,8 @@ final class CircuitBreakerInfrastructureFailureIntegrationTest extends TestCase
     {
         $failingStore = new class implements CircuitStore
         {
+            use UnusedStoreTransitions;
+
             public function get(string $name): Circuit
             {
                 throw new CircuitInfrastructureException(circuit: $name, previous: new RedisException('Redis unreachable'));
@@ -280,6 +288,31 @@ final class CircuitBreakerInfrastructureFailureIntegrationTest extends TestCase
             {
                 throw new CircuitInfrastructureException(circuit: $circuit->name, previous: new RedisException('Redis went away'));
             }
+
+            public function recordFailure(string $name, int $threshold, DateTimeImmutable $openUntil): Circuit
+            {
+                throw new CircuitInfrastructureException(circuit: $name, previous: new RedisException('Redis went away'));
+            }
+
+            public function recordSuccess(string $name): void
+            {
+                throw new CircuitInfrastructureException(circuit: $name, previous: new RedisException('Redis went away'));
+            }
+
+            public function transitionToHalfOpen(string $name, DateTimeImmutable $now): bool
+            {
+                throw new CircuitInfrastructureException(circuit: $name, previous: new RedisException('Redis went away'));
+            }
+
+            public function closeFromHalfOpen(string $name): bool
+            {
+                throw new CircuitInfrastructureException(circuit: $name, previous: new RedisException('Redis went away'));
+            }
+
+            public function reopenFromHalfOpen(string $name, DateTimeImmutable $until): bool
+            {
+                throw new CircuitInfrastructureException(circuit: $name, previous: new RedisException('Redis went away'));
+            }
         };
     }
 
@@ -317,7 +350,7 @@ final class CircuitBreakerInfrastructureFailureIntegrationTest extends TestCase
         };
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('postCallbackScenarios')]
+    #[DataProvider('postCallbackScenarios')]
     public function test_callback_runs_once_and_result_returned_when_recording_success_fails(CircuitState $state, string $policy): void
     {
         $fallbackCalls = 0;
@@ -339,7 +372,7 @@ final class CircuitBreakerInfrastructureFailureIntegrationTest extends TestCase
         $this->assertSame(0, $fallbackCalls);
     }
 
-    #[\PHPUnit\Framework\Attributes\DataProvider('postCallbackScenarios')]
+    #[DataProvider('postCallbackScenarios')]
     public function test_provider_exception_is_rethrown_unchanged_when_recording_failure_fails(CircuitState $state, string $policy): void
     {
         $fallbackCalls = 0;

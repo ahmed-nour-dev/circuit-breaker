@@ -27,6 +27,7 @@ use AhmedNour\CircuitBreaker\Tests\Support\AlwaysTripFailureClassifier;
 use AhmedNour\CircuitBreaker\Tests\Support\FakeClock;
 use AhmedNour\CircuitBreaker\Tests\Support\FakeLock;
 use AhmedNour\CircuitBreaker\Tests\Support\InMemoryCircuitStore;
+use AhmedNour\CircuitBreaker\Tests\Support\UnusedStoreTransitions;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 use Throwable;
@@ -71,6 +72,8 @@ final class CircuitBreakerInfrastructureFailureTest extends TestCase
     {
         $failingStore = new class implements CircuitStore
         {
+            use UnusedStoreTransitions;
+
             public function get(string $name): Circuit
             {
                 throw new CircuitInfrastructureException(circuit: $name);
@@ -93,6 +96,8 @@ final class CircuitBreakerInfrastructureFailureTest extends TestCase
     {
         $failingStore = new class implements CircuitStore
         {
+            use UnusedStoreTransitions;
+
             public function get(string $name): Circuit
             {
                 throw new CircuitInfrastructureException(circuit: $name);
@@ -125,6 +130,8 @@ final class CircuitBreakerInfrastructureFailureTest extends TestCase
     {
         $failingStore = new class implements CircuitStore
         {
+            use UnusedStoreTransitions;
+
             public function get(string $name): Circuit
             {
                 throw new CircuitInfrastructureException(circuit: $name);
