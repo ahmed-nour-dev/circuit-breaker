@@ -26,13 +26,13 @@ A production-ready, high-performance distributed Circuit Breaker package for PHP
 stateDiagram-v2
     [*] --> Closed
     
-    Closed --> Open: Failure threshold reached\n(e.g., 5 consecutive 5xx/timeouts)
+    Closed --> Open: Failure threshold reached\n(e.g., 5 consecutive 5xx/timeouts;\nany success or 4xx resets the count)
     Closed --> Closed: Successful call / 4xx error (resets failure count)
     
     Open --> Open: Calls fail fast with CircuitOpenException\n(No external HTTP requests made)
     Open --> HalfOpen: Recovery timeout elapsed\n(e.g., 60s passed)
     
-    HalfOpen --> Closed: Probe succeeds (acquires lock, recovers circuit)
+    HalfOpen --> Closed: Probe succeeds or fails with a 4xx (provider reachable; acquires lock, recovers circuit)
     HalfOpen --> Open: Probe fails (trips back to Open)
     HalfOpen --> HalfOpen: Another worker holds probe lock\n(throws CircuitBusyException)
 ```
