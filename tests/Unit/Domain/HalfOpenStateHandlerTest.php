@@ -187,8 +187,9 @@ final class HalfOpenStateHandlerTest extends TestCase
         try {
             $handler->execute($execution);
         } finally {
-            // Non-tripping means the provider answered, so the circuit closes
+            // Non-tripping error proves the provider is reachable
             $this->assertSame(CircuitState::Closed, $circuit->state);
+            $this->assertSame(0, $circuit->failures);
             $this->assertSame(CircuitState::Closed, $this->store->get('sms-service')->state);
 
             // Lock must be released

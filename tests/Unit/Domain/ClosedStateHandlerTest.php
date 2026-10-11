@@ -147,7 +147,7 @@ final class ClosedStateHandlerTest extends TestCase
         }
     }
 
-    public function test_non_tripping_failure_resets_failure_count_and_rethrows(): void
+    public function test_non_tripping_failure_resets_failures_and_rethrows(): void
     {
         $circuit = new Circuit('sms-service', CircuitState::Closed, failures: 2);
         $this->store->save($circuit);
@@ -171,7 +171,7 @@ final class ClosedStateHandlerTest extends TestCase
             $handler->execute($execution);
         } finally {
             $this->assertSame(CircuitState::Closed, $circuit->state);
-            $this->assertSame(0, $circuit->failures); // The provider answered, so the streak ends
+            $this->assertSame(0, $circuit->failures); // Provider answered: streak reset
 
             $persisted = $this->store->get('sms-service');
             $this->assertSame(CircuitState::Closed, $persisted->state);

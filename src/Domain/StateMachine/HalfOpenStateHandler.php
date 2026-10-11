@@ -48,7 +48,7 @@ final class HalfOpenStateHandler implements CircuitStateHandler
                     $execution->circuit->open($until);
                     $this->bestEffort(fn () => $this->store->reopenFromHalfOpen($execution->circuit->name, $until));
                 } else {
-                    // The provider answered (e.g. a 4xx), so it is reachable: close the circuit.
+                    // The provider answered, so it is reachable: close and rethrow.
                     $execution->circuit->close();
                     $this->bestEffort(fn () => $this->store->closeFromHalfOpen($execution->circuit->name));
                 }

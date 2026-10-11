@@ -31,7 +31,7 @@ final class ClosedStateHandler implements CircuitStateHandler
             $result = ($execution->callback)();
         } catch (Throwable $e) {
             if (! $this->failureClassifier->shouldTrip($e)) {
-                // The provider answered (e.g. a 4xx), so the failure streak is over.
+                // The provider answered, so the failure streak is broken.
                 $this->resetFailures($execution);
 
                 throw $e;
