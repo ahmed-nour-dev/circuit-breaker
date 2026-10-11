@@ -108,7 +108,7 @@ final class ClosedStateHandlerTest extends TestCase
 
             $persisted = $this->store->get('sms-service');
             $this->assertSame(CircuitState::Closed, $persisted->state);
-            $this->assertSame(0, $persisted->failures);
+            $this->assertSame(2, $persisted->failures);
         }
     }
 

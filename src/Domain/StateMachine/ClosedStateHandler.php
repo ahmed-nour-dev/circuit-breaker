@@ -32,26 +32,34 @@ final class ClosedStateHandler implements CircuitStateHandler
         } catch (Throwable $e) {
             if (! $this->failureClassifier->shouldTrip($e)) {
                 // The provider answered, so the failure streak is broken.
-                $execution->circuit->close();
-                $this->saveBestEffort($execution);
+                if ($execution->circuit->failures > 0) {
+                    $this->bestEffort(fn () => $this->store->recordSuccess($execution->circuit->name));
+                    $execution->circuit->close();
+                }
 
                 throw $e;
             }
 
-            $execution->circuit->recordFailure();
+            $until = $this->clock->now()->modify('+'.$execution->policy->recoveryTimeout.' seconds');
 
-            if ($execution->circuit->failures >= $execution->policy->failureThreshold) {
-                $until = $this->clock->now()->modify('+'.$execution->policy->recoveryTimeout.' seconds');
-                $execution->circuit->open($until);
-            }
+            $this->bestEffort(function () use ($execution, $until): void {
+                $stored = $this->store->recordFailure(
+                    $execution->circuit->name,
+                    $execution->policy->failureThreshold,
+                    $until,
+                );
 
-            $this->saveBestEffort($execution);
+                $execution->circuit->sync($stored);
+            });
 
             throw $e;
         }
 
-        $execution->circuit->close();
-        $this->saveBestEffort($execution);
+        // Nothing to reset on a healthy circuit, so skip the Redis write.
+        if ($execution->circuit->failures > 0) {
+            $this->bestEffort(fn () => $this->store->recordSuccess($execution->circuit->name));
+            $execution->circuit->close();
+        }
 
         return $result;
     }
@@ -60,10 +68,10 @@ final class ClosedStateHandler implements CircuitStateHandler
      * The callback has already run, so a store failure must not surface: it would
      * make the breaker's infrastructure policy run the callback a second time.
      */
-    private function saveBestEffort(CircuitExecution $execution): void
+    private function bestEffort(callable $record): void
     {
         try {
-            $this->store->save($execution->circuit);
+            $record();
         } catch (CircuitInfrastructureException) {
             // Recording the outcome is best-effort once the callback has run.
         }

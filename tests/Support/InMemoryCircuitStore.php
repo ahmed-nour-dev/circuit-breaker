@@ -40,6 +40,75 @@ final class InMemoryCircuitStore implements CircuitStore
         );
     }
 
+    public function recordFailure(string $name, int $threshold, \DateTimeImmutable $openUntil): Circuit
+    {
+        $circuit = $this->get($name);
+
+        if ($circuit->state === CircuitState::Closed) {
+            $circuit->recordFailure();
+
+            if ($circuit->failures >= $threshold) {
+                $circuit->open($openUntil);
+            }
+
+            $this->save($circuit);
+        }
+
+        return $circuit;
+    }
+
+    public function recordSuccess(string $name): void
+    {
+        $circuit = $this->get($name);
+
+        if ($circuit->state === CircuitState::Closed && $circuit->failures > 0) {
+            $circuit->close();
+            $this->save($circuit);
+        }
+    }
+
+    public function transitionToHalfOpen(string $name, \DateTimeImmutable $now): bool
+    {
+        $circuit = $this->get($name);
+
+        if ($circuit->state !== CircuitState::Open || ! $circuit->recoveryTimePassed($now)) {
+            return false;
+        }
+
+        $circuit->halfOpen();
+        $this->save($circuit);
+
+        return true;
+    }
+
+    public function closeFromHalfOpen(string $name): bool
+    {
+        $circuit = $this->get($name);
+
+        if ($circuit->state !== CircuitState::HalfOpen) {
+            return false;
+        }
+
+        $circuit->close();
+        $this->save($circuit);
+
+        return true;
+    }
+
+    public function reopenFromHalfOpen(string $name, \DateTimeImmutable $until): bool
+    {
+        $circuit = $this->get($name);
+
+        if ($circuit->state !== CircuitState::HalfOpen) {
+            return false;
+        }
+
+        $circuit->open($until);
+        $this->save($circuit);
+
+        return true;
+    }
+
     public function has(string $name): bool
     {
         return isset($this->circuits[$name]);
