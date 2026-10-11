@@ -282,7 +282,8 @@ final readonly class CircuitPolicy
     public function __construct(
         public int $failureThreshold,
         public int $recoveryTimeout,
-        public int $halfOpenLockTimeout = 10,
+        public int $halfOpenLockTimeout = 60,
+        public ?int $callTimeout = null,
     ) {
     }
 }
@@ -298,13 +299,13 @@ return [
         'twilio-sms' => [
             'failure_threshold' => 5,
             'recovery_timeout' => 300,
-            'half_open_lock_timeout' => 10,
+            'half_open_lock_timeout' => 60,
         ],
 
         'payment-gateway' => [
             'failure_threshold' => 3,
             'recovery_timeout' => 60,
-            'half_open_lock_timeout' => 10,
+            'half_open_lock_timeout' => 60,
         ],
 
     ],

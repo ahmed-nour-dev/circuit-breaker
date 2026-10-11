@@ -196,4 +196,46 @@ final class HalfOpenStateHandlerTest extends TestCase
             $this->assertFalse($this->lock->isLocked('sms-service'));
         }
     }
+
+    public function test_probe_that_outlives_its_lock_does_not_overwrite_newer_state(): void
+    {
+        $circuit = new Circuit('sms-service', CircuitState::HalfOpen, failures: 3);
+        $this->store->save($circuit);
+
+        $handler = new HalfOpenStateHandler(
+            lock: $this->lock,
+            store: $this->store,
+            failureClassifier: new AlwaysTripFailureClassifier,
+            clock: $this->clock,
+        );
+
+        $execution = new CircuitExecution(
+            circuit: $circuit,
+            policy: $this->policy,
+            callback: function () {
+                // The lock expires mid-probe and a newer probe reopens the circuit.
+                $this->lock->expireAll();
+                $this->store->reopenFromHalfOpen('sms-service', $this->clock->now()->modify('+60 seconds'));
+
+                return 'late-success';
+            },
+        );
+
+        $this->assertSame('late-success', $handler->execute($execution));
+        $this->assertSame(CircuitState::Open, $this->store->get('sms-service')->state);
+    }
+
+    public function test_policy_rejects_lock_timeout_not_greater_than_call_timeout(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        new CircuitPolicy(failureThreshold: 3, recoveryTimeout: 60, halfOpenLockTimeout: 30, callTimeout: 30);
+    }
+
+    public function test_policy_accepts_lock_timeout_greater_than_call_timeout(): void
+    {
+        $policy = new CircuitPolicy(failureThreshold: 3, recoveryTimeout: 60, halfOpenLockTimeout: 60, callTimeout: 30);
+
+        $this->assertSame(30, $policy->callTimeout);
+    }
 }

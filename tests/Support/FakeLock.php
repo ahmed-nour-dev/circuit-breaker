@@ -12,6 +12,9 @@ final class FakeLock implements CircuitLock
     /** @var array<string, bool> */
     private array $locked = [];
 
+    /** @var array<string, FakeLockHandle> */
+    private array $handles = [];
+
     private bool $shouldFailAcquire = false;
 
     public function acquire(string $circuit, int $seconds): ?LockHandle
@@ -22,9 +25,21 @@ final class FakeLock implements CircuitLock
 
         $this->locked[$circuit] = true;
 
-        return new FakeLockHandle(function () use ($circuit) {
+        $handle = new FakeLockHandle(function () use ($circuit) {
             unset($this->locked[$circuit]);
         });
+        $this->handles[$circuit] = $handle;
+
+        return $handle;
+    }
+
+    /** Simulate every held lock's TTL elapsing: handles stop owning it and it can be re-acquired. */
+    public function expireAll(): void
+    {
+        foreach ($this->handles as $handle) {
+            $handle->expire();
+        }
+        $this->locked = [];
     }
 
     public function setShouldFailAcquire(bool $fail): void

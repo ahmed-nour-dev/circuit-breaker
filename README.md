@@ -78,7 +78,9 @@ php artisan vendor:publish --tag=circuit-breaker-config
 
 ---
 
-## Configuration
+## Probe lock TTL
+
+`half_open_lock_timeout` (default **60 s**) is the TTL of the half-open probe lock. It is not extended while the probe runs, so it **must be greater than the timeout of the protected call** (e.g. your HTTP client timeout). If the lock expires mid-probe, another worker can start a second probe. Set the optional `call_timeout` on a policy to have the package reject a policy whose lock TTL is not greater than it. As a safeguard, a probe that finishes after its lock expired does not write its result to the circuit state.
 
 The published config file is located at `config/circuit-breaker.php`:
 
@@ -94,7 +96,9 @@ return [
     'default' => [
         'failure_threshold'      => (int) env('CIRCUIT_BREAKER_DEFAULT_THRESHOLD', 5),
         'recovery_timeout'       => (int) env('CIRCUIT_BREAKER_DEFAULT_RECOVERY_TIMEOUT', 60),
-        'half_open_lock_timeout' => (int) env('CIRCUIT_BREAKER_DEFAULT_LOCK_TIMEOUT', 10),
+        'half_open_lock_timeout' => (int) env('CIRCUIT_BREAKER_DEFAULT_LOCK_TIMEOUT', 60),
+        // Optional: timeout of the protected call. When set, half_open_lock_timeout must exceed it.
+        // 'call_timeout' => 30,
     ],
 
     /*
@@ -108,7 +112,7 @@ return [
         // 'payment-gateway' => [
         //     'failure_threshold'      => 3,
         //     'recovery_timeout'       => 60,
-        //     'half_open_lock_timeout' => 10,
+        //     'half_open_lock_timeout' => 60,
         // ],
     ],
 

@@ -89,7 +89,8 @@ final class CircuitBreakerServiceProvider extends ServiceProvider
             $defaultPolicy = new CircuitPolicy(
                 failureThreshold: (int) ($defaultConfig['failure_threshold'] ?? 5),
                 recoveryTimeout: (int) ($defaultConfig['recovery_timeout'] ?? 60),
-                halfOpenLockTimeout: (int) ($defaultConfig['half_open_lock_timeout'] ?? 10),
+                halfOpenLockTimeout: (int) ($defaultConfig['half_open_lock_timeout'] ?? 60),
+                callTimeout: isset($defaultConfig['call_timeout']) ? (int) $defaultConfig['call_timeout'] : null,
             );
 
             return new CircuitPolicyResolver($providers, $defaultPolicy);
