@@ -11,6 +11,8 @@ final class FakeLockHandle implements LockHandle
 {
     private bool $released = false;
 
+    private bool $expired = false;
+
     public function __construct(
         private readonly ?Closure $onRelease = null,
     ) {}
@@ -26,6 +28,17 @@ final class FakeLockHandle implements LockHandle
         if ($this->onRelease !== null) {
             ($this->onRelease)();
         }
+    }
+
+    public function isHeld(): bool
+    {
+        return ! $this->released && ! $this->expired;
+    }
+
+    /** Simulate the lock TTL elapsing while the holder is still running. */
+    public function expire(): void
+    {
+        $this->expired = true;
     }
 
     public function isReleased(): bool
