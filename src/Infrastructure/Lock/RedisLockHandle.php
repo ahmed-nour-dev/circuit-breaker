@@ -34,13 +34,9 @@ LUA;
         try {
             if ($this->redis instanceof \Redis) {
                 $this->redis->eval(self::RELEASE_SCRIPT, [$this->key, $this->token], 1);
-            } elseif (method_exists($this->redis, 'eval')) {
-                // Compatible with Laravel Redis connection & Predis
-                try {
-                    $this->redis->eval(self::RELEASE_SCRIPT, 1, $this->key, $this->token);
-                } catch (Throwable) {
-                    $this->redis->eval(self::RELEASE_SCRIPT, [$this->key, $this->token], 1);
-                }
+            } elseif (is_object($this->redis) && is_callable([$this->redis, 'eval'])) {
+                // Laravel PhpRedisConnection / PredisConnection and raw Predis client
+                $this->redis->eval(self::RELEASE_SCRIPT, 1, $this->key, $this->token);
             }
         } catch (Throwable) {
             // Ignore release failure to prevent crashing application

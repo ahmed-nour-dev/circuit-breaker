@@ -110,7 +110,7 @@ final class RedisCircuitLockTest extends TestCase
     {
         $failingClient = new class
         {
-            public function set(string $key, string $token, array $options): never
+            public function set(string $key, string $token, mixed ...$options): never
             {
                 throw new \RedisException('Connection reset by peer');
             }

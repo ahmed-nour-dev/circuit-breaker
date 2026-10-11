@@ -8,7 +8,6 @@ use AhmedNour\CircuitBreaker\Domain\Contracts\CircuitLock;
 use AhmedNour\CircuitBreaker\Domain\Contracts\LockHandle;
 use AhmedNour\CircuitBreaker\Domain\Exceptions\CircuitInfrastructureException;
 use AhmedNour\CircuitBreaker\Infrastructure\Redis\RedisConnectionFactory;
-use Throwable;
 
 final class RedisCircuitLock implements CircuitLock
 {
@@ -30,27 +29,26 @@ final class RedisCircuitLock implements CircuitLock
 
         try {
             $client = $this->resolveClient();
-            $acquired = false;
 
             if ($client instanceof \Redis) {
-                $result = $client->set($key, $token, ['NX', 'EX' => $seconds]);
-                $acquired = ($result === true);
-            } elseif (is_object($client) && method_exists($client, 'set')) {
-                // Laravel Redis connection / Predis
+                $acquired = $client->set($key, $token, ['NX', 'EX' => $seconds]) === true;
+            } elseif (is_object($client) && is_callable([$client, 'set'])) {
+                // is_callable (not method_exists): Laravel's PredisConnection proxies via __call.
+                // Laravel PhpRedisConnection / PredisConnection and raw Predis client share
+                // this signature. A falsy/null reply means the key exists: not acquired.
+                // Predis replies with a Status object (string-castable), phpredis with true.
                 $result = $client->set($key, $token, 'EX', $seconds, 'NX');
-                if ($result === true || $result === 'OK') {
-                    $acquired = true;
-                } else {
-                    // Try alternative argument array syntax if needed
-                    $result2 = $client->set($key, $token, ['NX', 'EX' => $seconds]);
-                    $acquired = ($result2 === true || $result2 === 'OK');
-                }
+                $acquired = $result === true || (is_object($result) || is_string($result)) && (string) $result === 'OK';
+            } else {
+                $acquired = false;
             }
 
             if ($acquired) {
                 return new RedisLockHandle($client, $key, $token);
             }
-        } catch (Throwable $e) {
+        } catch (\Exception $e) {
+            // Only connection/Redis errors are infrastructure failures; programming
+            // errors (\Error, \TypeError) must surface instead of being masked.
             throw new CircuitInfrastructureException(
                 circuit: $circuit,
                 previous: $e,
