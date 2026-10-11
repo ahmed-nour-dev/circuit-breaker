@@ -15,7 +15,9 @@ return [
     'default' => [
         'failure_threshold' => (int) (getenv('CIRCUIT_BREAKER_DEFAULT_THRESHOLD') ?: 5),
         'recovery_timeout' => (int) (getenv('CIRCUIT_BREAKER_DEFAULT_RECOVERY_TIMEOUT') ?: 60),
-        'half_open_lock_timeout' => (int) (getenv('CIRCUIT_BREAKER_DEFAULT_LOCK_TIMEOUT') ?: 10),
+        'half_open_lock_timeout' => (int) (getenv('CIRCUIT_BREAKER_DEFAULT_LOCK_TIMEOUT') ?: 60),
+        // Optional: timeout of the protected call. When set, half_open_lock_timeout must exceed it.
+        // 'call_timeout' => 30,
     ],
 
     /*
@@ -31,13 +33,13 @@ return [
         'twilio-sms' => [
             'failure_threshold' => 5,
             'recovery_timeout' => 300,
-            'half_open_lock_timeout' => 10,
+            'half_open_lock_timeout' => 60,
         ],
 
         'payment-gateway' => [
             'failure_threshold' => 3,
             'recovery_timeout' => 60,
-            'half_open_lock_timeout' => 10,
+            'half_open_lock_timeout' => 60,
         ],
     ],
 

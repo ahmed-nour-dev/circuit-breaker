@@ -9,7 +9,7 @@ use AhmedNour\CircuitBreaker\Domain\CircuitPolicy;
 final class CircuitPolicyResolver
 {
     /**
-     * @param  array<string, array{failure_threshold?: int, recovery_timeout?: int, half_open_lock_timeout?: int}>  $providers
+     * @param  array<string, array{failure_threshold?: int, recovery_timeout?: int, half_open_lock_timeout?: int, call_timeout?: int}>  $providers
      */
     public function __construct(
         private readonly array $providers = [],
@@ -27,6 +27,7 @@ final class CircuitPolicyResolver
                 failureThreshold: (int) ($config['failure_threshold'] ?? $default->failureThreshold),
                 recoveryTimeout: (int) ($config['recovery_timeout'] ?? $default->recoveryTimeout),
                 halfOpenLockTimeout: (int) ($config['half_open_lock_timeout'] ?? $default->halfOpenLockTimeout),
+                callTimeout: isset($config['call_timeout']) ? (int) $config['call_timeout'] : $default->callTimeout,
             );
         }
 
@@ -38,7 +39,7 @@ final class CircuitPolicyResolver
         return $this->defaultPolicy ?? new CircuitPolicy(
             failureThreshold: 5,
             recoveryTimeout: 60,
-            halfOpenLockTimeout: 10,
+            halfOpenLockTimeout: 60,
         );
     }
 }

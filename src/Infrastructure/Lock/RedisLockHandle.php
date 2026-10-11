@@ -45,6 +45,23 @@ LUA;
         }
     }
 
+    public function isHeld(): bool
+    {
+        if ($this->released) {
+            return false;
+        }
+
+        try {
+            $value = is_object($this->redis) && is_callable([$this->redis, 'get'])
+                ? $this->redis->get($this->key)
+                : null;
+
+            return (is_string($value) || is_object($value)) && (string) $value === $this->token;
+        } catch (Throwable) {
+            return false;
+        }
+    }
+
     public function getKey(): string
     {
         return $this->key;
