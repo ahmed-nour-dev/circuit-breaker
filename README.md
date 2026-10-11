@@ -294,7 +294,7 @@ The default `HttpFailureClassifier` intelligently distinguishes real provider ou
   - `500 Internal Server Error`, `502 Bad Gateway`, `503 Service Unavailable`, `504 Gateway Timeout`
   - Guzzle `ConnectException` and `ServerException`
   - Laravel HTTP Client `ConnectionException`
-  - Network error messages: `connection timed out`, `cURL error 28`, `connection refused`, `DNS resolution failed`, `reset by peer`
+  - Network error messages (`connection timed out`, `cURL error 28`, `connection refused`, `DNS resolution failed`, `reset by peer`) only when opted in with `new HttpFailureClassifier(matchMessagePatterns: true)`
 
 ---
 
