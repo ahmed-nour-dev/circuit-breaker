@@ -8,6 +8,8 @@ use AhmedNour\CircuitBreaker\Application\CircuitBreaker;
 use AhmedNour\CircuitBreaker\Application\CircuitPolicyResolver;
 use AhmedNour\CircuitBreaker\Domain\CircuitPolicy;
 use AhmedNour\CircuitBreaker\Domain\CircuitState;
+use AhmedNour\CircuitBreaker\Domain\Exceptions\CircuitBusyException;
+use AhmedNour\CircuitBreaker\Domain\Exceptions\CircuitOpenException;
 use AhmedNour\CircuitBreaker\Domain\StateMachine\CircuitStateMachine;
 use AhmedNour\CircuitBreaker\Domain\StateMachine\ClosedStateHandler;
 use AhmedNour\CircuitBreaker\Domain\StateMachine\HalfOpenStateHandler;
@@ -163,6 +165,35 @@ final class RedisCircuitStoreConcurrencyTest extends TestCase
         $this->assertSame('1', $this->redis->get($winners));
         $this->redis->del($winners);
         $this->assertSame(CircuitState::HalfOpen, $store->get('probe')->state);
+    }
+
+    public function test_only_one_worker_runs_the_probe_through_the_breaker(): void
+    {
+        $store = $this->newStore();
+        $store->recordFailure('probe-run', 1, $this->now()->modify('-1 second'));
+
+        $runs = self::PREFIX.'probe-runs';
+        $rejected = self::PREFIX.'probe-rejected';
+        $this->redis->del([$runs, $rejected]);
+
+        $this->runWorkers(12, function () use ($runs, $rejected): void {
+            $redis = $this->connect();
+
+            try {
+                $this->newBreaker()->execute('probe-run', function () use ($redis, $runs) {
+                    $redis->incr($runs);
+                    usleep(600_000);
+
+                    return 'ok';
+                });
+            } catch (CircuitBusyException|CircuitOpenException) {
+                $redis->incr($rejected);
+            }
+        });
+
+        $this->assertSame('1', $this->redis->get($runs), 'The provider must be probed exactly once.');
+        $this->assertSame('11', $this->redis->get($rejected));
+        $this->assertSame(CircuitState::Closed, $store->get('probe-run')->state);
     }
 
     public function test_healthy_circuit_success_performs_no_redis_write(): void
