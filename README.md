@@ -239,6 +239,8 @@ class SendSmsNotificationJob implements ShouldQueue
 
 If the Circuit Breaker's own storage (e.g. Redis) is down, the package uses the configured `infrastructure_failure.strategy`:
 
+> **At-most-once guarantee:** the protected callback runs at most once per `execute()` call under every strategy. The strategy only applies when the breaker's storage fails *before* the callback runs (reading state, acquiring the half-open lock, moving open → half-open). If storage fails *after* the callback ran, recording the outcome is best-effort: a successful result is still returned, and a provider exception is rethrown unchanged. The callback is never re-invoked.
+
 ### 1. Fail Open (`fail_open` — Default)
 Executes the protected callback anyway. Ideal when service availability is prioritized over protection to prevent a Redis outage from taking down your entire application.
 

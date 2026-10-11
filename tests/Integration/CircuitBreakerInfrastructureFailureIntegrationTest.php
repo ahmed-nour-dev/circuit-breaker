@@ -264,4 +264,106 @@ final class CircuitBreakerInfrastructureFailureIntegrationTest extends TestCase
 
         $this->assertSame('probe-result-via-fail-open', $result);
     }
+
+    private function saveFailingStore(CircuitState $state): CircuitStore
+    {
+        return new class($state) implements CircuitStore
+        {
+            public function __construct(private readonly CircuitState $state) {}
+
+            public function get(string $name): Circuit
+            {
+                return new Circuit($name, $this->state);
+            }
+
+            public function save(Circuit $circuit): void
+            {
+                throw new CircuitInfrastructureException(circuit: $circuit->name, previous: new RedisException('Redis went away'));
+            }
+        };
+    }
+
+    /**
+     * @return array<string, array{0: CircuitState, 1: string}>
+     */
+    public static function postCallbackScenarios(): array
+    {
+        $cases = [];
+        foreach ([CircuitState::Closed, CircuitState::HalfOpen] as $state) {
+            foreach (['fail_open', 'fail_closed', 'fallback'] as $policy) {
+                $cases["{$state->value}/{$policy}"] = [$state, $policy];
+            }
+        }
+
+        return $cases;
+    }
+
+    private function handlerFor(string $policy, int &$fallbackCalls): InfrastructureFailureHandler
+    {
+        return match ($policy) {
+            'fail_open' => new FailOpenHandler,
+            'fail_closed' => new FailClosedHandler,
+            'fallback' => new FallbackHandler(new class($fallbackCalls) implements InfrastructureFallback
+            {
+                public function __construct(private int &$calls) {}
+
+                public function execute(CircuitExecution $execution, Throwable $exception): mixed
+                {
+                    $this->calls++;
+
+                    return ($execution->callback)();
+                }
+            }),
+        };
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('postCallbackScenarios')]
+    public function test_callback_runs_once_and_result_returned_when_recording_success_fails(CircuitState $state, string $policy): void
+    {
+        $fallbackCalls = 0;
+        $breaker = $this->createCircuitBreaker(
+            $this->saveFailingStore($state),
+            new FakeLock,
+            $this->handlerFor($policy, $fallbackCalls),
+        );
+
+        $calls = 0;
+        $result = $breaker->execute('payments', function () use (&$calls) {
+            $calls++;
+
+            return 'charged';
+        });
+
+        $this->assertSame(1, $calls);
+        $this->assertSame('charged', $result);
+        $this->assertSame(0, $fallbackCalls);
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('postCallbackScenarios')]
+    public function test_provider_exception_is_rethrown_unchanged_when_recording_failure_fails(CircuitState $state, string $policy): void
+    {
+        $fallbackCalls = 0;
+        $breaker = $this->createCircuitBreaker(
+            $this->saveFailingStore($state),
+            new FakeLock,
+            $this->handlerFor($policy, $fallbackCalls),
+        );
+
+        $providerError = new \RuntimeException('provider 500', 500);
+        $calls = 0;
+
+        try {
+            $breaker->execute('payments', function () use (&$calls, $providerError) {
+                $calls++;
+
+                throw $providerError;
+            });
+            $this->fail('Expected provider exception.');
+        } catch (Throwable $e) {
+            $this->assertSame($providerError, $e);
+        }
+
+        $this->assertSame(1, $calls);
+        $this->assertSame(0, $fallbackCalls);
+    }
 }
