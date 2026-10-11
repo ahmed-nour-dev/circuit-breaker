@@ -9,6 +9,7 @@ use AhmedNour\CircuitBreaker\Domain\CircuitState;
 use AhmedNour\CircuitBreaker\Domain\Contracts\CircuitStore;
 use AhmedNour\CircuitBreaker\Domain\Contracts\Clock;
 use AhmedNour\CircuitBreaker\Domain\Contracts\FailureClassifier;
+use AhmedNour\CircuitBreaker\Domain\Exceptions\CircuitInfrastructureException;
 use Throwable;
 
 final class ClosedStateHandler implements CircuitStateHandler
@@ -28,11 +29,6 @@ final class ClosedStateHandler implements CircuitStateHandler
     {
         try {
             $result = ($execution->callback)();
-
-            $execution->circuit->close();
-            $this->store->save($execution->circuit);
-
-            return $result;
         } catch (Throwable $e) {
             if (! $this->failureClassifier->shouldTrip($e)) {
                 throw $e;
@@ -45,9 +41,27 @@ final class ClosedStateHandler implements CircuitStateHandler
                 $execution->circuit->open($until);
             }
 
-            $this->store->save($execution->circuit);
+            $this->saveBestEffort($execution);
 
             throw $e;
+        }
+
+        $execution->circuit->close();
+        $this->saveBestEffort($execution);
+
+        return $result;
+    }
+
+    /**
+     * The callback has already run, so a store failure must not surface: it would
+     * make the breaker's infrastructure policy run the callback a second time.
+     */
+    private function saveBestEffort(CircuitExecution $execution): void
+    {
+        try {
+            $this->store->save($execution->circuit);
+        } catch (CircuitInfrastructureException) {
+            // Recording the outcome is best-effort once the callback has run.
         }
     }
 }

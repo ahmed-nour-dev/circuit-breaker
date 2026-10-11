@@ -11,6 +11,7 @@ use AhmedNour\CircuitBreaker\Domain\Contracts\CircuitStore;
 use AhmedNour\CircuitBreaker\Domain\Contracts\Clock;
 use AhmedNour\CircuitBreaker\Domain\Contracts\FailureClassifier;
 use AhmedNour\CircuitBreaker\Domain\Exceptions\CircuitBusyException;
+use AhmedNour\CircuitBreaker\Domain\Exceptions\CircuitInfrastructureException;
 use Throwable;
 
 final class HalfOpenStateHandler implements CircuitStateHandler
@@ -39,22 +40,37 @@ final class HalfOpenStateHandler implements CircuitStateHandler
         }
 
         try {
-            $result = ($execution->callback)();
+            try {
+                $result = ($execution->callback)();
+            } catch (Throwable $e) {
+                if ($this->failureClassifier->shouldTrip($e)) {
+                    $until = $this->clock->now()->modify('+'.$execution->policy->recoveryTimeout.' seconds');
+                    $execution->circuit->open($until);
+                    $this->saveBestEffort($execution);
+                }
 
-            $execution->circuit->close();
-            $this->store->save($execution->circuit);
-
-            return $result;
-        } catch (Throwable $e) {
-            if ($this->failureClassifier->shouldTrip($e)) {
-                $until = $this->clock->now()->modify('+'.$execution->policy->recoveryTimeout.' seconds');
-                $execution->circuit->open($until);
-                $this->store->save($execution->circuit);
+                throw $e;
             }
 
-            throw $e;
+            $execution->circuit->close();
+            $this->saveBestEffort($execution);
+
+            return $result;
         } finally {
             $lockHandle->release();
+        }
+    }
+
+    /**
+     * The callback has already run, so a store failure must not surface: it would
+     * make the breaker's infrastructure policy run the callback a second time.
+     */
+    private function saveBestEffort(CircuitExecution $execution): void
+    {
+        try {
+            $this->store->save($execution->circuit);
+        } catch (CircuitInfrastructureException) {
+            // Recording the outcome is best-effort once the callback has run.
         }
     }
 }
