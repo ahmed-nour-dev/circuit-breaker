@@ -48,11 +48,14 @@ final class HttpFailureClassifier implements FailureClassifier
      * @param  list<class-string<Throwable>>  $additionalTripClasses
      * @param  list<class-string<Throwable>>  $ignoreClasses
      * @param  list<int>  $tripStatusCodes
+     * @param  bool  $matchMessagePatterns  Opt in to tripping on message substrings such as "timeout".
+     *                                      Off by default: unrelated exceptions can contain those words.
      */
     public function __construct(
         private readonly array $additionalTripClasses = [],
         private readonly array $ignoreClasses = [],
         private readonly array $tripStatusCodes = [500, 502, 503, 504, 520, 521, 522, 523, 524],
+        private readonly bool $matchMessagePatterns = false,
     ) {}
 
     public function shouldTrip(Throwable $exception): bool
@@ -96,6 +99,10 @@ final class HttpFailureClassifier implements FailureClassifier
             if (in_array($statusCode, $this->tripStatusCodes, true) || $statusCode >= 500) {
                 return true;
             }
+        }
+
+        if (! $this->matchMessagePatterns) {
+            return false;
         }
 
         // Check message for connection/timeout patterns

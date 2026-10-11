@@ -60,7 +60,7 @@ final class CircuitBreakerTest extends TestCase
         $this->store = new RedisCircuitStore($this->redis, 'integration_circuit:');
         $this->lock = new RedisCircuitLock($this->redis, 'integration_circuit:', ':probe-lock');
         $this->clock = new FakeClock(new DateTimeImmutable('2026-08-17 12:00:00', new DateTimeZone('UTC')));
-        $this->classifier = new HttpFailureClassifier;
+        $this->classifier = new HttpFailureClassifier(matchMessagePatterns: true);
 
         $this->policyResolver = new CircuitPolicyResolver(
             providers: [

@@ -4,19 +4,20 @@
 [![Latest Version](https://img.shields.io/packagist/v/ahmednour/circuit-breaker.svg)](https://packagist.org/packages/ahmednour/circuit-breaker)
 [![License](https://img.shields.io/packagist/l/ahmednour/circuit-breaker.svg)](LICENSE)
 
-A production-ready, high-performance distributed Circuit Breaker package for PHP 8.2+ and Laravel. Built with clean architecture principles to protect your applications from cascading failures when third-party APIs (SMS gateways, payment processors, CRMs, email providers, etc.) become degraded or unavailable.
+A distributed Circuit Breaker package for PHP 8.2+ and Laravel. Built with clean architecture principles to protect your applications from cascading failures when third-party APIs (SMS gateways, payment processors, CRMs, email providers, etc.) become degraded or unavailable.
 
 ---
 
 ## Key Features
 
 - **Distributed State Management**: Shared Redis circuit state across multiple app instances and background workers.
-- **Distributed Probe Locking**: Ensures exactly **one** worker probes the external service in `HALF_OPEN` state, preventing retry stampedes.
-- **Intelligent HTTP Failure Classification**: Differentiates client errors (`4xx` validation/bad requests) from infrastructure/server outages (`5xx`, timeouts, connection resets).
+- **Distributed Probe Locking**: A Redis lock lets a single worker at a time probe the external service in `HALF_OPEN` state, limiting retry stampedes. The lock has a TTL (`half_open_lock_timeout`); a probe that outlives it can overlap with another worker's probe, so set it above your slowest call.
+- **Intelligent HTTP Failure Classification**: Differentiates client errors (`4xx` validation/bad requests) from infrastructure/server outages (`5xx`, Guzzle/Laravel connection exceptions). Matching on exception-message text such as `timeout` is opt-in: `new HttpFailureClassifier(matchMessagePatterns: true)`.
 - **Self-Infrastructure Failure Resilience**: Storage-agnostic handling for its own infrastructure failures (e.g. Redis outages) supporting **Fail-Open**, **Fail-Closed**, and **Fallback** strategies.
 - **Octane & Horizon Ready**: Seamless connection lifecycle management to prevent stale Redis connections across long-running workers.
 - **Strict Separation of Concerns**: Pure domain logic decoupled from Laravel, Redis, and Guzzle.
-- **100% Test Coverage**: Complete unit, integration, and infrastructure test suite with in-memory fakes for fast, isolated testing.
+- **Tested**: Unit, integration, and Redis infrastructure tests run in CI against PHP 8.2–8.4 and Laravel 10–13, with raw `\Redis` and Laravel's phpredis and predis connections.
+- **Low overhead**: A successful call on a healthy closed circuit costs one Redis command (a `GET`) when using Laravel's Redis manager.
 
 ---
 
@@ -103,17 +104,12 @@ return [
     | Define custom thresholds, recovery timeouts, and probe lock TTLs per service.
     */
     'providers' => [
-        'twilio-sms' => [
-            'failure_threshold'      => 5,
-            'recovery_timeout'       => 300,
-            'half_open_lock_timeout' => 10,
-        ],
-
-        'payment-gateway' => [
-            'failure_threshold'      => 3,
-            'recovery_timeout'       => 60,
-            'half_open_lock_timeout' => 10,
-        ],
+        // Shipped empty. Example:
+        // 'payment-gateway' => [
+        //     'failure_threshold'      => 3,
+        //     'recovery_timeout'       => 60,
+        //     'half_open_lock_timeout' => 10,
+        // ],
     ],
 
     /*

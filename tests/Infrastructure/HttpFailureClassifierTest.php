@@ -43,13 +43,21 @@ final class HttpFailureClassifierTest extends TestCase
         $this->assertTrue($this->classifier->shouldTrip($exception));
     }
 
-    public function test_trips_on_curl_timeout_and_network_patterns(): void
+    public function test_does_not_trip_on_message_substrings_by_default(): void
     {
-        $this->assertTrue($this->classifier->shouldTrip(new RuntimeException('cURL error 28: Operation timeout')));
-        $this->assertTrue($this->classifier->shouldTrip(new RuntimeException('cURL error 7: Failed to connect to host')));
-        $this->assertTrue($this->classifier->shouldTrip(new RuntimeException('Could not resolve host: api.twilio.com')));
-        $this->assertTrue($this->classifier->shouldTrip(new RuntimeException('Connection refused')));
-        $this->assertTrue($this->classifier->shouldTrip(new RuntimeException('Network is unreachable')));
+        $this->assertFalse($this->classifier->shouldTrip(new RuntimeException('Report generation timeout exceeded')));
+        $this->assertFalse($this->classifier->shouldTrip(new RuntimeException('Server error in our own validation')));
+    }
+
+    public function test_trips_on_curl_timeout_and_network_patterns_when_opted_in(): void
+    {
+        $classifier = new HttpFailureClassifier(matchMessagePatterns: true);
+
+        $this->assertTrue($classifier->shouldTrip(new RuntimeException('cURL error 28: Operation timeout')));
+        $this->assertTrue($classifier->shouldTrip(new RuntimeException('cURL error 7: Failed to connect to host')));
+        $this->assertTrue($classifier->shouldTrip(new RuntimeException('Could not resolve host: api.twilio.com')));
+        $this->assertTrue($classifier->shouldTrip(new RuntimeException('Connection refused')));
+        $this->assertTrue($classifier->shouldTrip(new RuntimeException('Network is unreachable')));
     }
 
     public function test_trips_on_generic_5xx_exception_codes(): void

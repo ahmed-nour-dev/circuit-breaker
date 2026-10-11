@@ -72,6 +72,11 @@ final class RedisConnectionFactoryTest extends TestCase
 
     public function test_reconnects_after_connection_is_closed_externally(): void
     {
+        $this->factory = new RedisConnectionFactory(
+            host: (string) (getenv('REDIS_HOST') ?: '127.0.0.1'),
+            port: (int) (getenv('REDIS_PORT') ?: 6379),
+            revalidateAfter: 0.0,
+        );
         $redis = $this->factory->connection();
         $redis->set('circuit_factory_test_reconnect', 'before');
 
@@ -98,5 +103,24 @@ final class RedisConnectionFactoryTest extends TestCase
         // Can reconnect after double disconnect
         $redis = $this->factory->connection();
         $this->assertInstanceOf(Redis::class, $redis);
+    }
+
+    public function test_busy_connection_is_not_pinged_on_every_call(): void
+    {
+        $redis = $this->factory->connection();
+        $before = $this->commandCount($redis, 'ping');
+
+        for ($i = 0; $i < 20; $i++) {
+            $this->factory->connection();
+        }
+
+        $this->assertSame($before, $this->commandCount($redis, 'ping'));
+    }
+
+    private function commandCount(Redis $redis, string $command): int
+    {
+        $line = (string) ($redis->info('commandstats')['cmdstat_'.$command] ?? '');
+
+        return preg_match('/calls=(\d+)/', $line, $m) === 1 ? (int) $m[1] : 0;
     }
 }

@@ -28,17 +28,11 @@ return [
     |
     */
     'providers' => [
-        'twilio-sms' => [
-            'failure_threshold' => 5,
-            'recovery_timeout' => 300,
-            'half_open_lock_timeout' => 10,
-        ],
-
-        'payment-gateway' => [
-            'failure_threshold' => 3,
-            'recovery_timeout' => 60,
-            'half_open_lock_timeout' => 10,
-        ],
+        // 'payment-gateway' => [
+        //     'failure_threshold' => 3,
+        //     'recovery_timeout' => 60,
+        //     'half_open_lock_timeout' => 10,
+        // ],
     ],
 
     /*
