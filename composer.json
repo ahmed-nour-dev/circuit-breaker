@@ -31,9 +31,11 @@
         "guzzlehttp/guzzle": "^7.8",
         "illuminate/config": "^10.0 || ^11.0 || ^12.0 || ^13.0",
         "illuminate/container": "^10.0 || ^11.0 || ^12.0 || ^13.0",
+        "illuminate/redis": "^10.0 || ^11.0 || ^12.0 || ^13.0",
         "laravel/pint": "^1.18",
         "mockery/mockery": "^1.6",
-        "phpunit/phpunit": "^10.5 || ^11.0 || ^12.0"
+        "phpunit/phpunit": "^10.5 || ^11.0 || ^12.0",
+        "predis/predis": "^2.2 || ^3.0"
     },
     "suggest": {
         "guzzlehttp/guzzle": "Required for the built-in HTTP failure classifier to recognise Guzzle connection and 5xx exceptions."
